@@ -3,155 +3,132 @@
 import {
     Dialog,
     DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
 } from "@/components/ui/dialog";
-import {
-    ResponsiveContainer,
-    PieChart,
-    Pie,
-    Cell,
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    Tooltip,
-    Legend
-} from "recharts";
 import {
     Swords,
     Trophy,
     Target,
     TrendingUp,
-    TrendingDown,
-    AlertTriangle,
     Shield,
     Smartphone,
     Globe,
     Clock,
-    DollarSign,
-    CreditCard,
-    Briefcase,
     Ban,
-    AlertOctagon
+    AlertOctagon,
+    Mail,
+    Phone,
+    MapPin,
+    Star,
+    CalendarDays,
+    CheckCircle2,
+    XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+    ResponsiveContainer,
+    PieChart,
+    Pie,
+    Cell,
+    Tooltip,
+} from "recharts";
 
-interface ExtendedPlayer {
+// ─── Types ─────────────────────────────────────────────────────────────────
+
+// Shape coming from PlayersPage (already mapped from ApiUser)
+interface Player {
     id: string;
     username: string;
+    displayName: string;
     email: string;
-    phone: string;
-    country: string;
-    status: "Active" | "Banned" | "Suspended";
+    phone: string | null;
+    location: string;
+    status: "Active" | "Banned";
     joinedDate: string;
     lastActive: string;
-    avatar: string;
-    rank: string;
-    // Stats
-    gamesPlayed: { freeFire: number; bgmi: number; cod: number };
-    tournamentsJoined: number;
-    tournamentsCancelled: number;
-    tournamentsCompleted: number;
-    totalKills: { freeFire: number; bgmi: number; cod: number };
-    matchesWon: number;
-    matchesLost: number;
-    eloPoints: number;
-    winRate: number;
-    topFinishPercent: number;
-    // Earnings
-    highestPrizeWon: string;
-    totalEarnings: string;
-    entryFeesPaid: string;
-    lastTransactionDate: string;
-    // Disputes
-    disputesRaised: number;
-    disputesWonLost: { won: number; lost: number };
-    // Account
-    rating: number;
-    gameRanks: { freeFire: string; bgmi: string; cod: string };
-    banHistory: number;
-    suspendHistory: number;
-    guildMember: boolean;
-    guildName: string | null;
-    teamId: string | null;
-    blacklistedCount: number;
-    peakPlayTime: string;
-    avgMatchesPerWeek: number;
-    deviceType: string;
-    lastLoginIp: string;
+    isVerified: boolean;
+    elo: number;
+    photoUrl: string | null;
+    dateOfBirth: string | null;
 }
 
 interface PlayerProfileDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    player: any; // Using any for base player prop, will extend inside
+    player: Player | null;
 }
 
-const COLORS = ['#D7333A', '#3b82f6', '#10b981', '#f59e0b'];
+const COLORS = ["#D7333A", "#3b82f6", "#10b981", "#f59e0b"];
 
-export function PlayerProfileDialog({ open, onOpenChange, player: basePlayer }: PlayerProfileDialogProps) {
-    if (!basePlayer) return null;
+// ─── Helpers ───────────────────────────────────────────────────────────────
 
-    // Generate consistent mock data based on ID
-    const seed = parseInt(basePlayer.id.replace(/\D/g, '')) || 0;
+function Initials({ name }: { name: string }) {
+    const parts = name.trim().split(/\s+/);
+    const letters =
+        parts.length >= 2
+            ? parts[0][0] + parts[parts.length - 1][0]
+            : name.slice(0, 2);
+    return (
+        <span className="text-2xl font-bold text-zinc-400 uppercase select-none">
+            {letters}
+        </span>
+    );
+}
 
-    // Extended Data Mocking
-    const player: ExtendedPlayer = {
-        ...basePlayer,
-        gamesPlayed: {
-            freeFire: 120 + (seed % 50),
-            bgmi: 80 + (seed % 40),
-            cod: 40 + (seed % 30)
-        },
-        tournamentsJoined: 45 + (seed % 10),
-        tournamentsCancelled: 2,
-        tournamentsCompleted: 43 + (seed % 10),
-        totalKills: {
-            freeFire: 540 + (seed * 2),
-            bgmi: 320 + seed,
-            cod: 150 + seed
-        },
-        matchesWon: 85 + (seed % 20),
-        matchesLost: 35 + (seed % 10),
-        eloPoints: 2450 + (seed * 5),
-        winRate: 68.5,
-        topFinishPercent: 82.4,
-        highestPrizeWon: "$250.00",
-        totalEarnings: "$1,450.00",
-        entryFeesPaid: "$320.00",
-        lastTransactionDate: "2024-03-10",
-        disputesRaised: 3,
-        disputesWonLost: { won: 2, lost: 1 },
-        rating: 4.8,
-        gameRanks: {
-            freeFire: "Grandmaster",
-            bgmi: "Ace Dominator",
-            cod: "Legendary"
-        },
-        banHistory: 0,
-        suspendHistory: 0,
-        guildMember: true,
-        guildName: "Team Soul",
-        teamId: "TS-8821",
-        blacklistedCount: 0,
-        peakPlayTime: "20:00 - 23:00",
-        avgMatchesPerWeek: 24,
-        deviceType: "iPhone 14 Pro Max",
-        lastLoginIp: "192.168.1.42"
-    };
+function formatDob(iso: string | null): string {
+    if (!iso) return "\u2014";
+    // Slice YYYY-MM-DD only to avoid UTC->local timezone shift showing wrong day
+    const [year, month, day] = iso.slice(0, 10).split("-").map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+    });
+}
+
+function calcAge(iso: string | null): string {
+    if (!iso) return "";
+    const [year, month, day] = iso.slice(0, 10).split("-").map(Number);
+    const dob = new Date(year, month - 1, day);
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+    return `${age} yrs`;
+}
+
+// ─── Component ─────────────────────────────────────────────────────────────
+
+export function PlayerProfileDialog({ open, onOpenChange, player }: PlayerProfileDialogProps) {
+    if (!player) return null;
+
+    // ── Zeroed-out stats (not in API yet) ──────────────────────────────────
+    const tournamentsJoined = 0;
+    const tournamentsCompleted = 0;
+    const matchesWon = 0;
+    const matchesLost = 0;
+    const winRate = 0;
+    const topFinishPercent = 0;
+    const avgMatchesPerWeek = 0;
+    const peakPlayTime = "—";
+    const highestPrizeWon = "₹0";
+    const totalEarnings = "₹0";
+    const entryFeesPaid = "₹0";
+    const lastTransactionDate = "—";
+    const disputesWon = 0;
+    const disputesLost = 0;
+    const blacklistedCount = 0;
+    const guildName: string | null = null;
+    const teamId: string | null = null;
+
+    // Free Fire only platform — single game
+    const ffKills = 0;
+    const ffRank = "—";
 
     const mostPlayedData = [
-        { name: 'Free Fire', value: player.gamesPlayed.freeFire },
-        { name: 'BGMI', value: player.gamesPlayed.bgmi },
-        { name: 'COD', value: player.gamesPlayed.cod },
+        { name: "Free Fire", value: ffKills === 0 ? 1 : ffKills }, // avoid empty pie
     ];
 
-    const statsData = [
-        { name: 'Won', value: player.matchesWon },
-        { name: 'Lost', value: player.matchesLost },
-    ];
+    const pieColors = ["#D7333A"];
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -160,76 +137,97 @@ export function PlayerProfileDialog({ open, onOpenChange, player: basePlayer }: 
                 {/* Header Banner */}
                 <div className="h-32 bg-gradient-to-r from-brand-red/20 to-zinc-900 relative">
                     <div className="absolute -bottom-8 left-8 flex items-end gap-4">
-                        <div className="h-24 w-24 rounded-full bg-zinc-950 border-4 border-[#09090b] overflow-hidden flex items-center justify-center relative">
-                            <img src={player.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                        {/* Avatar */}
+                        <div className="h-24 w-24 rounded-full bg-zinc-950 border-4 border-[#09090b] overflow-hidden flex items-center justify-center shrink-0">
+                            {player.photoUrl ? (
+                                <img
+                                    src={player.photoUrl}
+                                    alt={player.username}
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <Initials name={player.displayName} />
+                            )}
                         </div>
                         <div className="mb-2">
-                            <h2 className="text-2xl font-bold text-white font-naston">{player.username}</h2>
+                            <h2 className="text-2xl font-bold text-white font-naston">
+                                {player.username}
+                            </h2>
                             <div className="flex items-center gap-2 text-sm text-zinc-400">
-                                <span className="font-suisse">{player.id}</span>
-                                <span className="w-1 h-1 bg-zinc-600 rounded-full"></span>
-                                <span className="text-brand-red flex items-center gap-1"><Trophy className="h-3 w-3" /> {player.rank}</span>
+                                <span className="font-suisse truncate max-w-[180px]">{player.id}</span>
+                                {player.isVerified && (
+                                    <>
+                                        <span className="w-1 h-1 bg-zinc-600 rounded-full" />
+                                        <span className="text-brand-red flex items-center gap-1">
+                                            <Shield className="h-3 w-3" /> Verified
+                                        </span>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
-                    <div className="absolute top-4 right-12 flex gap-2 items-center">
-                        <div className="flex gap-2 mr-4">
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                className="h-7 bg-red-600 text-white hover:bg-red-700 border border-red-500/50 transition-all font-medium"
-                            >
-                                <Ban className="h-3 w-3 mr-1" /> Ban Player
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 bg-amber-500 text-white hover:bg-amber-600 border border-amber-400/50 transition-all font-bold"
-                            >
-                                <AlertOctagon className="h-3 w-3 mr-1" /> Suspend
-                            </Button>
-                        </div>
-                        {player.status === 'Banned' ? (
-                            <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Banned</span>
+
+                    {/* Action buttons + status badge */}
+                    <div className="absolute top-4 right-4 flex gap-2 items-center">
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            className="h-7 bg-red-600 text-white hover:bg-red-700 border border-red-500/50 font-medium"
+                        >
+                            <Ban className="h-3 w-3 mr-1" /> Ban Player
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 bg-amber-500 text-white hover:bg-amber-600 border border-amber-400/50 font-bold"
+                        >
+                            <AlertOctagon className="h-3 w-3 mr-1" /> Suspend
+                        </Button>
+                        {player.status === "Banned" ? (
+                            <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                                Banned
+                            </span>
                         ) : (
-                            <span className="bg-green-500/20 text-green-400 border border-green-500/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Active</span>
+                            <span className="bg-green-500/20 text-green-400 border border-green-500/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                                Active
+                            </span>
                         )}
                     </div>
                 </div>
 
-                <div className="pt-12 px-8 pb-8 flex flex-col gap-8">
+                <div className="pt-14 px-8 pb-8 flex flex-col gap-8">
 
                     {/* Top Stats Grid */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-4 flex flex-col">
-                            <span className="text-zinc-500 text-xs uppercase font-semibold">Total Earnings</span>
-                            <span className="text-2xl font-bold text-white font-suisse mt-1">{player.totalEarnings}</span>
-                            <span className="text-xs text-green-400 flex items-center mt-1"><TrendingUp className="h-3 w-3 mr-1" /> +12% this month</span>
-                        </div>
-                        <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-4 flex flex-col">
-                            <span className="text-zinc-500 text-xs uppercase font-semibold">ELO Points</span>
-                            <span className="text-2xl font-bold text-white font-suisse mt-1">{player.eloPoints}</span>
-                            <span className="text-xs text-brand-red flex items-center mt-1">Top 5% Global</span>
-                        </div>
-                        <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-4 flex flex-col">
-                            <span className="text-zinc-500 text-xs uppercase font-semibold">Win Rate</span>
-                            <span className="text-2xl font-bold text-white font-suisse mt-1">{player.winRate}%</span>
-                            <span className="text-xs text-zinc-400 mt-1">{player.matchesWon}W - {player.matchesLost}L</span>
-                        </div>
-                        <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-4 flex flex-col">
-                            <span className="text-zinc-500 text-xs uppercase font-semibold">Tournaments</span>
-                            <span className="text-2xl font-bold text-white font-suisse mt-1">{player.tournamentsCompleted}</span>
-                            <span className="text-xs text-zinc-400 mt-1">{player.tournamentsJoined} Joined</span>
-                        </div>
+                        <StatCard
+                            label="Total Earnings"
+                            value={totalEarnings}
+                            sub={<span className="text-xs text-zinc-500 flex items-center mt-1">No transactions yet</span>}
+                        />
+                        <StatCard
+                            label="ELO Points"
+                            value={player.elo}
+                            sub={<span className="text-xs text-zinc-500 mt-1">Unranked</span>}
+                        />
+                        <StatCard
+                            label="Win Rate"
+                            value={`${winRate}%`}
+                            sub={<span className="text-xs text-zinc-500 mt-1">{matchesWon}W – {matchesLost}L</span>}
+                        />
+                        <StatCard
+                            label="Tournaments"
+                            value={tournamentsCompleted}
+                            sub={<span className="text-xs text-zinc-500 mt-1">{tournamentsJoined} Joined</span>}
+                        />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-                        {/* Column 1: Charts & Gameplay */}
+                        {/* Left: Charts + Game Stats */}
                         <div className="md:col-span-2 flex flex-col gap-6">
 
-                            {/* Charts Section */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Pie chart */}
                                 <div className="bg-zinc-900/20 border border-white/5 rounded-xl p-4">
                                     <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
                                         <Target className="h-4 w-4 text-brand-red" /> Most Played Game
@@ -246,137 +244,136 @@ export function PlayerProfileDialog({ open, onOpenChange, player: basePlayer }: 
                                                     paddingAngle={5}
                                                     dataKey="value"
                                                 >
-                                                    {mostPlayedData.map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                    {mostPlayedData.map((_, index) => (
+                                                        <Cell key={index} fill={pieColors[index % pieColors.length]} />
                                                     ))}
                                                 </Pie>
                                                 <Tooltip
-                                                    contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', color: '#fff' }}
-                                                    itemStyle={{ color: '#fff' }}
+                                                    contentStyle={{ backgroundColor: "#18181b", borderColor: "#27272a", color: "#fff" }}
+                                                    itemStyle={{ color: "#fff" }}
                                                 />
                                             </PieChart>
                                         </ResponsiveContainer>
                                     </div>
                                     <div className="flex justify-center gap-4 text-xs mt-2">
-                                        {mostPlayedData.map((entry, index) => (
-                                            <div key={entry.name} className="flex items-center gap-1 text-zinc-400">
-                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index] }}></div>
-                                                {entry.name}
-                                            </div>
-                                        ))}
+                                        <div className="flex items-center gap-1 text-zinc-400">
+                                            <div className="w-2 h-2 rounded-full bg-brand-red" />
+                                            Free Fire
+                                        </div>
                                     </div>
                                 </div>
 
+                                {/* Performance panel */}
                                 <div className="bg-zinc-900/20 border border-white/5 rounded-xl p-4">
                                     <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
                                         <Swords className="h-4 w-4 text-brand-red" /> Performance
                                     </h3>
                                     <div className="space-y-4">
-                                        <div className="flex justify-between items-center text-sm">
-                                            <span className="text-zinc-400">Avg Matches/Week</span>
-                                            <span className="text-white font-suisse">{player.avgMatchesPerWeek}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-sm">
-                                            <span className="text-zinc-400">Peak Play Time</span>
-                                            <span className="text-white font-suisse">{player.peakPlayTime}</span>
-                                        </div>
-                                        <div className="w-full bg-zinc-800 rounded-full h-1.5 mt-2">
-                                            <div className="bg-brand-red h-1.5 rounded-full" style={{ width: `${player.topFinishPercent}%` }}></div>
-                                        </div>
-                                        <div className="flex justify-between text-xs text-zinc-500 mt-1">
-                                            <span>Top Finish Consistency</span>
-                                            <span>{player.topFinishPercent}%</span>
+                                        <InfoRow label="Avg Matches / Week" value={avgMatchesPerWeek} />
+                                        <InfoRow label="Peak Play Time" value={peakPlayTime} />
+                                        <div>
+                                            <div className="w-full bg-zinc-800 rounded-full h-1.5 mt-2">
+                                                <div
+                                                    className="bg-brand-red h-1.5 rounded-full"
+                                                    style={{ width: `${topFinishPercent}%` }}
+                                                />
+                                            </div>
+                                            <div className="flex justify-between text-xs text-zinc-500 mt-1">
+                                                <span>Top Finish Consistency</span>
+                                                <span>{topFinishPercent}%</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Game Specific Stats */}
+                            {/* Game Statistics */}
                             <div className="bg-zinc-900/20 border border-white/5 rounded-xl p-4">
                                 <h3 className="text-sm font-semibold text-white mb-4">Game Statistics</h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                    {[
-                                        { name: 'Free Fire', kills: player.totalKills.freeFire, rank: player.gameRanks.freeFire },
-                                        { name: 'BGMI', kills: player.totalKills.bgmi, rank: player.gameRanks.bgmi },
-                                        { name: 'COD', kills: player.totalKills.cod, rank: player.gameRanks.cod },
-                                    ].map((game) => (
-                                        <div key={game.name} className="bg-zinc-950/50 rounded-lg p-3 border border-white/5">
-                                            <div className="text-xs text-zinc-500 uppercase">{game.name}</div>
-                                            <div className="text-lg font-bold text-white mt-1 font-suisse">{game.kills} <span className="text-xs font-sans text-zinc-500 font-normal">Kills</span></div>
-                                            <div className="text-xs text-brand-red mt-1">{game.rank}</div>
+                                <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
+                                    <div className="bg-zinc-950/50 rounded-lg p-3 border border-white/5">
+                                        <div className="text-xs text-zinc-500 uppercase">Free Fire</div>
+                                        <div className="text-lg font-bold text-white mt-1 font-suisse">
+                                            {ffKills}{" "}
+                                            <span className="text-xs font-sans text-zinc-500 font-normal">Kills</span>
                                         </div>
-                                    ))}
+                                        <div className="text-xs text-brand-red mt-1">{ffRank}</div>
+                                    </div>
                                 </div>
                             </div>
-
                         </div>
 
-                        {/* Column 2: Info & Details */}
+                        {/* Right: Info cards */}
                         <div className="flex flex-col gap-6">
 
                             {/* Profile Details */}
                             <div className="bg-zinc-900/20 border border-white/5 rounded-xl p-4">
                                 <h3 className="text-sm font-semibold text-white mb-4">Profile Details</h3>
                                 <div className="space-y-3 text-sm">
-                                    <div className="flex justify-between">
-                                        <span className="text-zinc-400 flex items-center gap-2"><Globe className="h-3 w-3" /> Country</span>
-                                        <span className="text-white">{player.country}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-zinc-400 flex items-center gap-2"><Smartphone className="h-3 w-3" /> Device</span>
-                                        <span className="text-white">{player.deviceType}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-zinc-400 flex items-center gap-2"><Clock className="h-3 w-3" /> Last Active</span>
-                                        <span className="text-white">{player.lastActive}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-zinc-400 flex items-center gap-2"><Shield className="h-3 w-3" /> IP Used</span>
-                                        <span className="text-white font-suisse">{player.lastLoginIp}</span>
-                                    </div>
+                                    <InfoRow
+                                        label={<><Mail className="h-3 w-3" /> Email</>}
+                                        value={<span className="truncate max-w-[140px] block text-right">{player.email}</span>}
+                                    />
+                                    <InfoRow
+                                        label={<><Phone className="h-3 w-3" /> Phone</>}
+                                        value={player.phone ?? "—"}
+                                    />
+                                    <InfoRow
+                                        label={<><MapPin className="h-3 w-3" /> Location</>}
+                                        value={player.location}
+                                    />
+                                    <InfoRow
+                                        label={<><CalendarDays className="h-3 w-3" /> DOB</>}
+                                        value={
+                                            player.dateOfBirth
+                                                ? `${formatDob(player.dateOfBirth)} (${calcAge(player.dateOfBirth)})`
+                                                : "—"
+                                        }
+                                    />
+                                    <InfoRow
+                                        label={<><Clock className="h-3 w-3" /> Last Active</>}
+                                        value={player.lastActive}
+                                    />
+                                    <InfoRow
+                                        label={<><CalendarDays className="h-3 w-3" /> Joined</>}
+                                        value={player.joinedDate}
+                                    />
+                                    <InfoRow
+                                        label={<><Shield className="h-3 w-3" /> Verified</>}
+                                        value={
+                                            player.isVerified
+                                                ? <span className="flex items-center gap-1 text-green-400"><CheckCircle2 className="h-3 w-3" /> Yes</span>
+                                                : <span className="flex items-center gap-1 text-zinc-500"><XCircle className="h-3 w-3" /> No</span>
+                                        }
+                                    />
                                 </div>
                             </div>
 
-                            {/* Guild / Team */}
+                            {/* Team & Guild */}
                             <div className="bg-zinc-900/20 border border-white/5 rounded-xl p-4">
-                                <h3 className="text-sm font-semibold text-white mb-4">Team & Guild</h3>
+                                <h3 className="text-sm font-semibold text-white mb-4">Team &amp; Guild</h3>
                                 <div className="space-y-3 text-sm">
-                                    <div className="flex justify-between">
-                                        <span className="text-zinc-400">Guild Name</span>
-                                        <span className="text-white">{player.guildName || "None"}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-zinc-400">Team ID</span>
-                                        <span className="text-white font-suisse">{player.teamId || "N/A"}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-zinc-400">Organizer Blacklists</span>
-                                        <span className="text-red-400 font-bold">{player.blacklistedCount}</span>
-                                    </div>
+                                    <InfoRow label="Guild Name" value={guildName ?? "None"} />
+                                    <InfoRow label="Team ID" value={teamId ?? "N/A"} />
+                                    <InfoRow
+                                        label="Organizer Blacklists"
+                                        value={<span className={blacklistedCount > 0 ? "text-red-400 font-bold" : "text-zinc-400"}>{blacklistedCount}</span>}
+                                    />
                                 </div>
                             </div>
 
-                            {/* Financial */}
+                            {/* Financials */}
                             <div className="bg-zinc-900/20 border border-white/5 rounded-xl p-4">
                                 <h3 className="text-sm font-semibold text-white mb-4">Financials</h3>
                                 <div className="space-y-3 text-sm">
-                                    <div className="flex justify-between">
-                                        <span className="text-zinc-400">Highest Win</span>
-                                        <span className="text-white font-suisse">{player.highestPrizeWon}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-zinc-400">Fees Paid</span>
-                                        <span className="text-white font-suisse">{player.entryFeesPaid}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-zinc-400">Last Txn</span>
-                                        <span className="text-white font-suisse">{player.lastTransactionDate}</span>
-                                    </div>
+                                    <InfoRow label="Highest Win" value={highestPrizeWon} />
+                                    <InfoRow label="Fees Paid" value={entryFeesPaid} />
+                                    <InfoRow label="Last Txn" value={lastTransactionDate} />
                                     <div className="pt-2 border-t border-white/5">
-                                        <div className="flex justify-between">
-                                            <span className="text-zinc-400">Disputes (W/L)</span>
-                                            <span className="text-zinc-300">{player.disputesWonLost.won}W / {player.disputesWonLost.lost}L</span>
-                                        </div>
+                                        <InfoRow
+                                            label="Disputes (W/L)"
+                                            value={`${disputesWon}W / ${disputesLost}L`}
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -384,8 +381,42 @@ export function PlayerProfileDialog({ open, onOpenChange, player: basePlayer }: 
                         </div>
                     </div>
                 </div>
-
             </DialogContent>
         </Dialog>
+    );
+}
+
+// ─── Tiny sub-components ────────────────────────────────────────────────────
+
+function StatCard({
+    label,
+    value,
+    sub,
+}: {
+    label: string;
+    value: string | number;
+    sub?: React.ReactNode;
+}) {
+    return (
+        <div className="bg-zinc-900/30 border border-white/5 rounded-xl p-4 flex flex-col">
+            <span className="text-zinc-500 text-xs uppercase font-semibold">{label}</span>
+            <span className="text-2xl font-bold text-white font-suisse mt-1">{value}</span>
+            {sub}
+        </div>
+    );
+}
+
+function InfoRow({
+    label,
+    value,
+}: {
+    label: React.ReactNode;
+    value: React.ReactNode;
+}) {
+    return (
+        <div className="flex justify-between items-center">
+            <span className="text-zinc-400 flex items-center gap-1.5">{label}</span>
+            <span className="text-white text-right">{value}</span>
+        </div>
     );
 }

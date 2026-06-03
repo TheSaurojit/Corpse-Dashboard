@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-
+import { useState, useEffect } from "react";
 
 import {
     MoreHorizontal,
@@ -26,53 +25,85 @@ interface Match {
     name: string;
     game: string;
     type: "Solo" | "Duo" | "Squad";
-    roomId: string; // Room Id/code
+    roomId: string;
     scheduledTime: string;
     totalSlots: number;
     slotsFilled: number;
     organizer: string;
-    teams: string[]; // Player list/ Team names
+    teams: string[];
     status: "Scheduled" | "Live" | "Completed" | "Cancelled";
     resultStatus: "Pending" | "Published" | "Disputed";
     prizePool: string;
-    resultProof: string; // URL or "View"
-    approvedBy: string; // Approved By Admin / Organizer
+    resultProof: string;
+    approvedBy: string;
     entryFee: string;
-    commission: string; // Platform Commission
+    commission: string;
     payoutStatus: "Pending" | "released" | "Hold";
-    payoutTime: string; // Payout release time
+    payoutTime: string;
     duration: string;
 }
 
-// Mock Data
-const MOCK_MATCHES: Match[] = Array.from({ length: 10 }).map((_, i) => ({
-    id: `M-${1000 + i}`,
-    name: `Pro Scrims #${200 + i} - Erangel`,
-    game: "BGMI",
-    type: i % 3 === 0 ? "Squad" : i % 2 === 0 ? "Duo" : "Solo",
-    roomId: i % 4 === 0 ? "Pending" : `RM-${8880 + i}`,
-    scheduledTime: new Date(Date.now() + i * 3600000).toLocaleString(),
-    totalSlots: 100,
-    slotsFilled: 85 + i,
-    organizer: "Corpse Esports",
-    teams: ["Team Soul", "Godlike", "Entity", "Blind", "Team XSpark"],
-    status: i === 0 ? "Live" : i === 1 ? "Completed" : "Scheduled",
-    resultStatus: i === 1 ? "Published" : "Pending",
-    prizePool: "₹5,000",
-    resultProof: i === 1 ? "View Screenshot" : "-",
-    approvedBy: "Admin",
-    entryFee: "₹50",
-    commission: "10%",
-    payoutStatus: i === 1 ? "released" : "Pending",
-    payoutTime: i === 1 ? "2 hours ago" : "-",
-    duration: i === 1 ? "45m" : "-"
-}));
+const API_URL = "https://corpse-backend-dev.up.railway.app/api/admin/tournaments";
+
+function mapTournament(t: any): Match {
+    const typeMap: Record<string, string> = { squad: "Squad", duo: "Duo", solo: "Solo" };
+    const statusMap: Record<string, string> = {
+        upcoming: "Scheduled",
+        live: "Live",
+        completed: "Completed",
+        cancelled: "Cancelled",
+    };
+
+    return {
+        id: t.id ? `T-${t.id.slice(0, 6).toUpperCase()}` : "—",
+        name: t.name ?? "Unnamed",
+        game: "Free Fire",
+        type: (typeMap[t.type] ?? "Squad") as Match["type"],
+        roomId: "Pending",
+        scheduledTime: t.startAt ? new Date(t.startAt).toLocaleString() : "—",
+        totalSlots: t.maxTeams ?? 0,
+        slotsFilled: t.filledSlots ?? 0,
+        organizer: t.createdById === "default-organizer-id" ? "Corpse Esports" : (t.createdById ?? "—"),
+        teams: Array.from({ length: Math.min(t.filledSlots ?? 0, 5) }, (_, i) => `Team ${i + 1}`),
+        status: (statusMap[t.status] ?? "Scheduled") as Match["status"],
+        resultStatus: (t.status === "completed" ? "Published" : "Pending") as Match["resultStatus"],
+        prizePool: t.prizePool ? `₹${Number(t.prizePool).toLocaleString("en-IN")}` : "—",
+        resultProof: t.status === "completed" ? "View Screenshot" : "-",
+        approvedBy: "Admin",
+        entryFee: t.entryFeeAndroidTeam ? `₹${t.entryFeeAndroidTeam}` : "—",
+        commission: "—",
+        payoutStatus: (t.status === "completed" ? "released" : "Pending") as Match["payoutStatus"],
+        payoutTime: "-",
+        duration: "-",
+    };
+}
 
 export default function MatchesPage() {
+    const [matches, setMatches] = useState<Match[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");
 
-    const filteredMatches = MOCK_MATCHES.filter(match => {
+    useEffect(() => {
+        fetch(API_URL)
+            .then((r) => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+            })
+            .then((data) => {
+                // Response shape: { success, data: { data: [...], page, limit, totalCount, totalPages }, message }
+                const list: any[] = data?.data?.data ?? [];
+                setMatches(list.map(mapTournament));
+                setLoading(false);
+            })
+            .catch((e) => {
+                setError(e.message);
+                setLoading(false);
+            });
+    }, []);
+
+    const filteredMatches = matches.filter(match => {
         const matchesSearch =
             match.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             match.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -139,9 +170,22 @@ export default function MatchesPage() {
                 </div>
             </div>
 
-            {/* Data Table Container - Horizontal Scroll */}
+            {/* Data Table Container */}
             <div className="rounded-xl border border-white/5 bg-zinc-900/20 backdrop-blur-sm overflow-hidden flex-1 relative flex flex-col">
                 <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent pb-4">
+                    {loading ? (
+                        <div className="flex items-center justify-center py-20 text-zinc-500 text-sm gap-2">
+                            <svg className="animate-spin h-4 w-4 text-brand-red" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                            </svg>
+                            Loading tournaments…
+                        </div>
+                    ) : error ? (
+                        <div className="flex items-center justify-center py-20 text-red-400 text-sm">
+                            Failed to load: {error}
+                        </div>
+                    ) : (
                     <table className="w-full text-sm text-left">
                         <thead className="text-xs uppercase bg-zinc-950/80 text-zinc-500 sticky top-0 z-10 backdrop-blur-md font-suisse">
                             <tr>
@@ -164,7 +208,13 @@ export default function MatchesPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                            {filteredMatches.map((match) => (
+                            {filteredMatches.length === 0 ? (
+                                <tr>
+                                    <td colSpan={16} className="px-6 py-12 text-center text-zinc-500 text-sm">
+                                        No matches found.
+                                    </td>
+                                </tr>
+                            ) : filteredMatches.map((match) => (
                                 <tr
                                     key={match.id}
                                     className="group hover:bg-white/[0.02] transition-colors"
@@ -242,11 +292,12 @@ export default function MatchesPage() {
                             ))}
                         </tbody>
                     </table>
+                    )}
                 </div>
             </div>
 
             <div className="flex items-center justify-between text-xs text-zinc-500 px-1">
-                <div>Showing 10 of 128 matches</div>
+                <div>Showing {filteredMatches.length} of {matches.length} matches</div>
                 <div className="flex gap-2">
                     <Button variant="outline" size="sm" disabled className="h-8 border-white/5 bg-transparent">Previous</Button>
                     <Button variant="outline" size="sm" className="h-8 border-white/5 bg-transparent hover:bg-white/5 hover:text-white">Next</Button>
