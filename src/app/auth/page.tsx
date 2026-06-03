@@ -1,160 +1,246 @@
 "use client";
 
+import { useState } from "react";
+
 export default function LoginPage() {
-  const handleGoogleSignIn = () => {
-    // wire up your signInWithGoogle() here
-  };
+  const [hovered, setHovered] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4 relative overflow-hidden">
+    <div className="root">
+      {/* Ambient background blobs */}
+      <div className="blob blob-1" />
+      <div className="blob blob-2" />
+      <div className="grid-overlay" />
 
-      {/* Background grid */}
-      <div
-        className="fixed inset-0 pointer-events-none z-0"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(232,48,42,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(232,48,42,0.045) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-        }}
-      />
-
-      {/* Glow orbs */}
-      <div className="fixed -top-32 -left-32 w-[480px] h-[480px] rounded-full pointer-events-none z-0"
-        style={{ background: "radial-gradient(circle, rgba(232,48,42,0.12), transparent 70%)", filter: "blur(100px)" }} />
-      <div className="fixed -bottom-24 -right-24 w-[380px] h-[380px] rounded-full pointer-events-none z-0"
-        style={{ background: "radial-gradient(circle, rgba(232,48,42,0.08), transparent 70%)", filter: "blur(100px)" }} />
-
-      {/* Content */}
-      <div className="relative z-10 flex flex-col items-center w-full max-w-sm">
-
+      <div className="card">
         {/* Logo */}
-        <div className="flex items-center gap-2.5 mb-2">
-          <div
-            className="w-9 h-9 bg-[#e8302a] flex items-center justify-center flex-shrink-0"
-            style={{ clipPath: "polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%)" }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-              <path d="M12 2L2 7v5c0 5.25 4.25 10.15 10 11.35C17.75 22.15 22 17.25 22 12V7L12 2z" />
+        <div className="logo-wrap">
+          <div className="logo-icon">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+              <path
+                d="M14 2L4 8v12l10 6 10-6V8L14 2z"
+                fill="#e53e3e"
+                opacity="0.15"
+                stroke="#e53e3e"
+                strokeWidth="1.5"
+              />
+              <path
+                d="M14 7l-6 3.5v7L14 21l6-3.5v-7L14 7z"
+                fill="#e53e3e"
+                opacity="0.3"
+              />
+              <circle cx="14" cy="14" r="3" fill="#e53e3e" />
             </svg>
           </div>
-          <span className="text-[#f0f0f0] text-2xl font-bold tracking-wide">
-            Corpse
-          </span>
+          <span className="logo-text">Corpse</span>
         </div>
 
-        {/* Tagline */}
-        <p className="text-[#e8302a] text-[10px] uppercase tracking-[2.5px] font-semibold mb-5">
-          Esports Tournament Platform
-        </p>
+        <div className="divider-line" />
 
-        {/* Card */}
-        <div className="w-full bg-[#161616] border border-[#2a2a2a] rounded-2xl px-8 py-9 relative overflow-hidden">
+        {/* Heading */}
+        <div className="heading-block">
+          <h1 className="heading">Admin Portal</h1>
+          <p className="subheading">Sign in to access the dashboard</p>
+        </div>
 
-          {/* Top accent line */}
-          <div
-            className="absolute top-0 left-0 right-0 h-[2px]"
-            style={{ background: "linear-gradient(90deg, transparent, #e8302a 50%, transparent)" }}
-          />
-
-          {/* Inner top glow */}
-          <div
-            className="absolute inset-0 rounded-2xl pointer-events-none"
-            style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(232,48,42,0.07) 0%, transparent 60%)" }}
-          />
-
-          {/* Beta badge */}
-          <span className="absolute top-0 right-5 bg-[#e8302a] text-white text-[9px] font-bold tracking-[1.5px] uppercase px-2.5 py-0.5 rounded-b-md">
-            Beta
-          </span>
-
-          {/* Header */}
-          <div className="text-center mb-7 relative z-10">
-            <h1 className="text-[#f0f0f0] text-3xl font-bold tracking-tight leading-none">
-              Welcome Back
-            </h1>
-            <p className="text-[#555] text-[13px] mt-2.5 leading-relaxed">
-              Sign in to manage tournaments, squads &amp; matches
-            </p>
-          </div>
-
-          {/* Divider */}
-          <div className="flex items-center gap-3 mb-5 relative z-10">
-            <div className="flex-1 h-px bg-[#222]" />
-            <span className="text-[#3a3a3a] text-[10px] uppercase tracking-[1.8px] whitespace-nowrap">
-              Continue with
-            </span>
-            <div className="flex-1 h-px bg-[#222]" />
-          </div>
-
-          {/* Google Button */}
-          <button
-            onClick={handleGoogleSignIn}
-            className="w-full flex items-center justify-center gap-3 bg-[#1c1c1c] hover:bg-[#232323] border border-[#2e2e2e] hover:border-[#3a3a3a] rounded-xl px-5 py-3.5 transition-colors duration-200 cursor-pointer relative z-10"
-          >
-            <svg width="20" height="20" viewBox="0 0 533.5 544.3" xmlns="http://www.w3.org/2000/svg" className="flex-shrink-0">
-              <path d="M533.5 278.4c0-18.5-1.5-37.1-4.7-55.3H272.1v104.8h147c-6.1 33.8-25.7 63.7-54.4 82.7v68h87.7c51.5-47.4 81.1-117.4 81.1-200.2z" fill="#4285f4"/>
-              <path d="M272.1 544.3c73.4 0 135.3-24.1 180.4-65.7l-87.7-68c-24.4 16.6-55.9 26-92.6 26-71 0-131.2-47.9-152.8-112.3H28.9v70.1c46.2 91.9 140.3 149.9 243.2 149.9z" fill="#34a853"/>
-              <path d="M119.3 324.3c-11.4-33.8-11.4-70.4 0-104.2V150H28.9c-38.6 76.9-38.6 167.5 0 244.4l90.4-70.1z" fill="#fbbc04"/>
-              <path d="M272.1 107.7c38.8-.6 76.3 14 104.4 40.8l77.7-77.7C405 24.6 339.7-.8 272.1 0 169.2 0 75.1 58 28.9 150l90.4 70.1c21.5-64.5 81.8-112.4 152.8-112.4z" fill="#ea4335"/>
+        {/* Google button */}
+        <button
+          className={`google-btn${hovered ? " google-btn--hovered" : ""}`}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+        >
+          <span className="google-icon">
+            <svg width="18" height="18" viewBox="0 0 18 18">
+              <path
+                d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"
+                fill="#4285F4"
+              />
+              <path
+                d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"
+                fill="#34A853"
+              />
+              <path
+                d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
+                fill="#FBBC05"
+              />
+              <path
+                d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
+                fill="#EA4335"
+              />
             </svg>
-            <span className="text-[#f0f0f0] text-sm font-medium">
-              Sign in with Google
-            </span>
-          </button>
+          </span>
+          <span className="google-label">Continue with Google</span>
+          <span className="google-arrow">→</span>
+        </button>
 
-          {/* Feature strip */}
-          <div className="flex justify-between gap-3 mt-7 pt-6 border-t border-[#1e1e1e] relative z-10">
-            {[
-              {
-                label: "Squads & Teams",
-                icon: (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#e8302a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                  </svg>
-                ),
-              },
-              {
-                label: "ELO Rankings",
-                icon: (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#e8302a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                  </svg>
-                ),
-              },
-              {
-                label: "Prize Pools",
-                icon: (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#e8302a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="7" width="20" height="14" rx="2"/>
-                    <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
-                    <line x1="12" y1="12" x2="12" y2="16"/>
-                    <line x1="10" y1="14" x2="14" y2="14"/>
-                  </svg>
-                ),
-              },
-            ].map((f) => (
-              <div key={f.label} className="flex flex-col items-center gap-1.5 flex-1">
-                <div className="w-9 h-9 rounded-lg bg-[#111] border border-[#252525] flex items-center justify-center">
-                  {f.icon}
-                </div>
-                <span className="text-[#555] text-[11px] text-center leading-tight">{f.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <p className="text-[#3a3a3a] text-[11px] text-center mt-5 leading-relaxed">
-          By signing in you agree to our{" "}
-          <a href="/terms" className="text-[#555] underline underline-offset-2 hover:text-[#f0f0f0] transition-colors">Terms</a>{" "}
-          and{" "}
-          <a href="/privacy" className="text-[#555] underline underline-offset-2 hover:text-[#f0f0f0] transition-colors">Privacy Policy</a>.<br />
-          Corpse Esports Private Limited · Karimganj, Assam
+        {/* Footer note */}
+        <p className="footer-note">
+          Access restricted to authorized administrators only.
         </p>
       </div>
+
+      <style>{`
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        .root {
+          min-height: 100vh;
+          background: #0a0a0a;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: 'Geist', 'Inter', sans-serif;
+          position: relative;
+          overflow: hidden;
+        }
+
+        /* Subtle red ambient blobs */
+        .blob {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(90px);
+          pointer-events: none;
+          opacity: 0.18;
+        }
+        .blob-1 {
+          width: 420px; height: 420px;
+          background: radial-gradient(circle, #e53e3e 0%, transparent 70%);
+          top: -100px; left: -80px;
+          animation: drift1 12s ease-in-out infinite alternate;
+        }
+        .blob-2 {
+          width: 300px; height: 300px;
+          background: radial-gradient(circle, #c53030 0%, transparent 70%);
+          bottom: -80px; right: -60px;
+          animation: drift2 14s ease-in-out infinite alternate;
+        }
+        @keyframes drift1 { to { transform: translate(30px, 40px); } }
+        @keyframes drift2 { to { transform: translate(-25px, -30px); } }
+
+        /* Dot-grid overlay */
+        .grid-overlay {
+          position: absolute; inset: 0;
+          background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
+          background-size: 28px 28px;
+          pointer-events: none;
+        }
+
+        /* Card */
+        .card {
+          position: relative;
+          z-index: 10;
+          width: 100%;
+          max-width: 400px;
+          background: rgba(18, 18, 18, 0.92);
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 14px;
+          padding: 40px 36px 32px;
+          backdrop-filter: blur(24px);
+          box-shadow: 0 0 0 1px rgba(229,62,62,0.08), 0 32px 64px rgba(0,0,0,0.6);
+          animation: fadeUp 0.5s cubic-bezier(.16,1,.3,1) both;
+        }
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Logo */
+        .logo-wrap {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 20px;
+        }
+        .logo-icon {
+          width: 36px; height: 36px;
+          background: rgba(229,62,62,0.1);
+          border: 1px solid rgba(229,62,62,0.2);
+          border-radius: 8px;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .logo-text {
+          font-size: 18px;
+          font-weight: 700;
+          color: #fff;
+          letter-spacing: -0.3px;
+        }
+
+        .divider-line {
+          height: 1px;
+          background: rgba(255,255,255,0.06);
+          margin-bottom: 28px;
+        }
+
+        /* Heading */
+        .heading-block { margin-bottom: 28px; }
+        .heading {
+          font-size: 22px;
+          font-weight: 700;
+          color: #f0f0f0;
+          letter-spacing: -0.4px;
+          margin-bottom: 6px;
+        }
+        .subheading {
+          font-size: 13.5px;
+          color: rgba(255,255,255,0.4);
+          line-height: 1.5;
+        }
+
+        /* Google button */
+        .google-btn {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 16px;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 9px;
+          cursor: pointer;
+          transition: background 0.18s, border-color 0.18s, transform 0.15s;
+          color: #e0e0e0;
+          font-size: 14px;
+          font-weight: 500;
+          letter-spacing: 0.1px;
+          position: relative;
+        }
+        .google-btn:hover, .google-btn--hovered {
+          background: rgba(255,255,255,0.08);
+          border-color: rgba(255,255,255,0.18);
+          transform: translateY(-1px);
+        }
+        .google-btn:active { transform: translateY(0); }
+
+        .google-icon {
+          display: flex; align-items: center; justify-content: center;
+          width: 28px; height: 28px;
+          background: #fff;
+          border-radius: 5px;
+          flex-shrink: 0;
+        }
+        .google-label { flex: 1; text-align: left; }
+        .google-arrow {
+          font-size: 16px;
+          color: rgba(255,255,255,0.25);
+          transition: color 0.18s, transform 0.18s;
+        }
+        .google-btn:hover .google-arrow {
+          color: rgba(255,255,255,0.5);
+          transform: translateX(2px);
+        }
+
+        /* Footer note */
+        .footer-note {
+          margin-top: 20px;
+          font-size: 11.5px;
+          color: rgba(255,255,255,0.2);
+          text-align: center;
+          line-height: 1.5;
+        }
+
+        @media (max-width: 440px) {
+          .card { margin: 16px; padding: 32px 24px 28px; }
+        }
+      `}</style>
     </div>
   );
 }

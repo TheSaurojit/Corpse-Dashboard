@@ -43,8 +43,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 
 const sidebarItems = [
     { title: "Dashboard", url: "/", icon: LayoutDashboard },
-    { title: "Tournaments", url: "#", icon: Trophy },
-    { title: "Matches", url: "/matches", icon: Swords },
+    // { title: "Tournaments", url: "#", icon: Trophy },
+    { title: "Arena", url: "/arena", icon: Swords },
     { title: "Players", url: "/players", icon: Users },
     { title: "Organizers", url: "/organizers", icon: Briefcase },
     { title: "Guilds / Teams", url: "/guilds", icon: Shield },
