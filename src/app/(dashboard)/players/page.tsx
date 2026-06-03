@@ -21,7 +21,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PlayerProfileDialog } from "@/components/players/PlayerProfileDialog";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ApiUser {
     id: string;
@@ -55,7 +54,6 @@ interface ApiResponse {
     message: string;
 }
 
-// Map API user → the shape our UI needs
 interface Player {
     id: string;
     username: string;
@@ -72,14 +70,12 @@ interface Player {
     dateOfBirth: string | null;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const API_BASE = "https://corpse-backend-dev.up.railway.app/api/admin/users";
 
 function mapUser(u: ApiUser): Player {
     const nameParts = [u.fname, u.lname].filter(Boolean);
-    const displayName = nameParts.length ? nameParts.join(" ") : u.userName;
-
+    const displayName = nameParts.length ? nameParts.join(" ") : (u.userName ?? "Unknown");
     const locationParts = [u.district, u.state].filter(Boolean);
     const location = locationParts.length ? locationParts.join(", ") : "—";
 
@@ -105,9 +101,10 @@ function mapUser(u: ApiUser): Player {
 }
 
 
-
-// Avatar initials fallback
 function Initials({ name }: { name: string }) {
+    if (!name?.trim()) {
+        return <span className="text-xs font-bold text-zinc-400 uppercase select-none">?</span>;
+    }
     const parts = name.trim().split(/\s+/);
     const letters = parts.length >= 2
         ? parts[0][0] + parts[parts.length - 1][0]
@@ -118,6 +115,7 @@ function Initials({ name }: { name: string }) {
         </span>
     );
 }
+
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
