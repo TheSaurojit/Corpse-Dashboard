@@ -1,15 +1,16 @@
-
 import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_BASE =
     process.env.ADMIN_API_URL ??
     "https://corpse-backend-dev.up.railway.app/api/admin";
 
+// 15 second timeout — if Railway doesn't respond, fail fast
+const TIMEOUT_MS = 15_000;
+
 async function handler(
     req: NextRequest,
     { params }: { params: Promise<{ path: string[] }> }
 ) {
-    // In Next.js 15+, params is a Promise — must be awaited
     const { path } = await params;
 
     const targetPath = path.join("/");
@@ -31,11 +32,17 @@ async function handler(
     }
 
     try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
         const backendRes = await fetch(targetUrl, {
             method: req.method,
             headers: forwardHeaders,
             body,
+            signal: controller.signal,
         });
+
+        clearTimeout(timer);
 
         const data = await backendRes.text();
         console.log(`[PROXY] Response: ${backendRes.status}`);
@@ -46,7 +53,14 @@ async function handler(
                 "Content-Type": backendRes.headers.get("Content-Type") ?? "application/json",
             },
         });
-    } catch (err) {
+    } catch (err: unknown) {
+        if (err instanceof Error && err.name === "AbortError") {
+            console.error("[PROXY] Request timed out:", targetUrl);
+            return NextResponse.json(
+                { success: false, message: "Request timed out. The server took too long to respond." },
+                { status: 504 }
+            );
+        }
         console.error("[PROXY] Fetch failed:", err);
         return NextResponse.json(
             { success: false, message: "Proxy fetch failed" },
