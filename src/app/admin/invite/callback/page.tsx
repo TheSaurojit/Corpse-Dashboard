@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ADMIN_API_BASE, SESSION_TOKEN_KEY } from "@/lib/authutils";
+import { API_BASE, SESSION_TOKEN_KEY } from "@/lib/authutils";
 
 const LOGIN_ROUTE = "/admin/login";
 const HOME_ROUTE = "/";
@@ -79,7 +79,7 @@ export default function InviteCallbackPage() {
     async function doAccept(token: string) {
         setPageState("loading");
         try {
-            const res = await fetch(`${ADMIN_API_BASE}/invite/accept`, {
+            const res = await fetch(`${API_BASE}/invite/accept`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ token }),
@@ -111,7 +111,7 @@ export default function InviteCallbackPage() {
     async function doVerify(oobCode: string, email: string, inviteToken: string) {
         setPageState("verifying");
         try {
-            const res = await fetch(`${ADMIN_API_BASE}/auth/verify`, {
+            const res = await fetch(`${API_BASE}/auth/verify`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, oobCode, inviteToken }),

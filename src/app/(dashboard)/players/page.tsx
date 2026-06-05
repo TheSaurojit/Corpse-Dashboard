@@ -20,7 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PlayerProfileDialog } from "@/components/players/PlayerProfileDialog";
-import { authHeaders, ADMIN_API_BASE } from "@/lib/authutils";
+import { authHeaders, API_BASE } from "@/lib/authutils";
 
 
 interface ApiUser {
@@ -71,7 +71,7 @@ interface Player {
     dateOfBirth: string | null;
 }
 
-const PLAYERS_URL = `${ADMIN_API_BASE}/users`;
+const PLAYERS_URL = `${API_BASE}/users`;
 
 function mapUser(u: ApiUser): Player {
     const nameParts = [u.fname, u.lname].filter(Boolean);

@@ -6,11 +6,11 @@
 
 export const SESSION_TOKEN_KEY = "admin_session_token";
 
-/** Base URL for all admin API calls — goes through the local proxy */
+/**
+ * Use this in ALL client components for every fetch call.
+ * Goes through the Next.js proxy → avoids CORS, hides Railway URL.
+ */
 export const API_BASE = "/api/proxy";
-export const ADMIN_API_BASE =
-    process.env.NEXT_PUBLIC_ADMIN_API_URL ??
-    "https://corpse-backend-dev.up.railway.app/api/admin";
 
 /** Returns the stored session token, or empty string if not found */
 export function getSessionToken(): string {

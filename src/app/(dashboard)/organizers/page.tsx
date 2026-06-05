@@ -15,9 +15,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OrganizerProfileDialog } from "@/components/organizers/OrganizerProfileDialog";
-import { authHeaders, ADMIN_API_BASE } from "@/lib/authutils";
+import { authHeaders, API_BASE } from "@/lib/authutils";
 
-const ORGANIZERS_URL = `${ADMIN_API_BASE}/organizers`;
+const ORGANIZERS_URL = `${API_BASE}/organizers`;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

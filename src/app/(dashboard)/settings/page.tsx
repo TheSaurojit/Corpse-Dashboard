@@ -21,9 +21,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { authHeaders, ADMIN_API_BASE } from "@/lib/authutils";
+import { authHeaders, API_BASE } from "@/lib/authutils";
 
-const INVITE_URL = `${ADMIN_API_BASE}/invite`;
+const INVITE_URL = `${API_BASE}/invite`;
 
 const ROLES = [
     { id: "MEMBER",  label: "Member",       desc: "View only access" },

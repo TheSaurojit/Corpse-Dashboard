@@ -14,9 +14,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GuildProfileDialog } from "@/components/guilds/GuildProfileDialog";
-import { authHeaders, ADMIN_API_BASE } from "@/lib/authutils";
+import { authHeaders, API_BASE } from "@/lib/authutils";
 
-const TEAMS_URL = `${ADMIN_API_BASE}/teams`;
+const TEAMS_URL = `${API_BASE}/teams`;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
