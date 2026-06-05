@@ -7,6 +7,7 @@ import Image from "next/image";
 const HOME_ROUTE = "/";
 const LOGIN_ROUTE = "/admin/login";
 const SESSION_TOKEN_KEY = "admin_session_token";
+const COOKIE_MAX_AGE = 14 * 24 * 60 * 60;
 
 type PageState =
     | "verifying"
@@ -25,18 +26,14 @@ export default function AuthCallbackPage() {
     const storedOobCode = useRef<string | null>(null);
 
     useEffect(() => {
-        // Strict-mode / HMR guard — only run once
         if (hasRun.current) return;
         hasRun.current = true;
 
-        // ── Read params directly from window.location so we never
-        //    race against Next.js's searchParams hydration ──────────
         const params = new URLSearchParams(window.location.search);
 
         const oobCode = params.get("oobCode") ?? params.get("token") ?? null;
-        const mode    = params.get("mode");   // Firebase sends mode=signIn
+        const mode    = params.get("mode");
 
-        // If Firebase sent a different mode (e.g. resetPassword) bail early
         if (mode && mode !== "signIn") {
             setErrorMsg(`Unexpected mode "${mode}" — this link is not a sign-in link.`);
             setPageState("error");
@@ -48,14 +45,9 @@ export default function AuthCallbackPage() {
             return;
         }
 
-        // Stash oobCode so the manual-email form can use it
         storedOobCode.current = oobCode;
         sessionStorage.setItem("pending_oob_code", oobCode);
 
-        // ── Resolve email ──────────────────────────────────────────
-        // sessionStorage: set on same tab before requesting link
-        // localStorage:   cross-tab / page-reload fallback
-        // URL param:      only present on invite flow, not regular sign-in
         const email =
             sessionStorage.getItem("admin_pending_email") ??
             localStorage.getItem("admin_pending_email") ??
@@ -63,7 +55,6 @@ export default function AuthCallbackPage() {
             "";
 
         if (!email) {
-            // Can't auto-verify — ask user to re-enter their email
             setPageState("missing_email");
             return;
         }
@@ -72,7 +63,6 @@ export default function AuthCallbackPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // ─────────────────────────────────────────────────────────────────────────
     async function doVerify(oobCode: string, email: string) {
         setPageState("verifying");
 
@@ -93,19 +83,24 @@ export default function AuthCallbackPage() {
             console.log("[AuthCallback] verify →", res.status, json);
 
             if (res.ok && json.success && json.data?.token) {
-                // ── Success: persist token and clear temp keys ────────
-                localStorage.setItem(SESSION_TOKEN_KEY, json.data.token);
+                const token = json.data.token;
+
+                // ── Persist token in both localStorage AND cookie ────
+                // localStorage: used by authHeaders() for API calls
+                // cookie: read by middleware to protect routes
+                localStorage.setItem(SESSION_TOKEN_KEY, token);
+                document.cookie = `${SESSION_TOKEN_KEY}=${token}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Strict`;
+
+                // ── Clean up temp keys ───────────────────────────────
                 sessionStorage.removeItem("admin_pending_email");
                 sessionStorage.removeItem("pending_oob_code");
                 localStorage.removeItem("admin_pending_email");
 
                 setPageState("success");
-                // Small delay so the user sees the success state
                 setTimeout(() => router.replace(HOME_ROUTE), 1200);
                 return;
             }
 
-            // ── Error cases from the API spec ─────────────────────────
             if (res.status === 401) {
                 setErrorMsg("This sign-in link is invalid or has expired. Please request a new one.");
             } else if (res.status === 400) {
@@ -125,7 +120,6 @@ export default function AuthCallbackPage() {
         }
     }
 
-    // Called when user manually types their email after cross-tab/device loss
     function handleManualVerify() {
         const email = manualEmail.trim();
         if (!email) return;
@@ -142,12 +136,10 @@ export default function AuthCallbackPage() {
             return;
         }
 
-        // Persist so doVerify can clean it up on success
         localStorage.setItem("admin_pending_email", email);
         doVerify(oobCode, email);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     return (
         <div className="root">
             <div className="blob blob-1" />

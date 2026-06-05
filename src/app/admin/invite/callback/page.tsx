@@ -1,4 +1,4 @@
-
+// FILE MUST BE AT: app/admin/invite/callback/page.tsx
 
 "use client";
 
@@ -9,6 +9,7 @@ import { API_BASE, SESSION_TOKEN_KEY } from "@/lib/authutils";
 
 const LOGIN_ROUTE = "/admin/login";
 const HOME_ROUTE = "/";
+const COOKIE_MAX_AGE = 14 * 24 * 60 * 60; // 14 days in seconds
 
 type PageState =
     | "loading"
@@ -40,7 +41,6 @@ export default function InviteCallbackPage() {
         const inviteToken = params.get("token") ?? null;
         const mode = params.get("mode") ?? null;
 
-        // ── No invite token at all — broken link ──────────────────
         if (!inviteToken) {
             setPageState("invalid_token");
             return;
@@ -48,13 +48,11 @@ export default function InviteCallbackPage() {
 
         storedInviteToken.current = inviteToken;
 
-        // ── SECOND VISIT: Firebase redirected back with oobCode ───
         if (mode === "signIn" && oobCode) {
             storedOobCode.current = oobCode;
             sessionStorage.setItem("pending_oob_code", oobCode);
             sessionStorage.setItem("pending_invite_token", inviteToken);
 
-            // Try to resolve email
             const email =
                 sessionStorage.getItem("admin_pending_email") ??
                 localStorage.getItem("admin_pending_email") ??
@@ -70,12 +68,10 @@ export default function InviteCallbackPage() {
             return;
         }
 
-        // ── FIRST VISIT: just the invite token, accept it ─────────
         doAccept(inviteToken);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // ── Step 4: POST /invite/accept { token } ────────────────────────────────
     async function doAccept(token: string) {
         setPageState("loading");
         try {
@@ -89,7 +85,6 @@ export default function InviteCallbackPage() {
             try { json = await res.json(); } catch { /* empty */ }
 
             if (res.ok && json.success) {
-                // Magic link sent — show "check inbox"
                 setPageState("check_inbox");
                 return;
             }
@@ -107,7 +102,6 @@ export default function InviteCallbackPage() {
         }
     }
 
-    // ── Step 8: POST /auth/verify { email, oobCode, inviteToken } ────────────
     async function doVerify(oobCode: string, email: string, inviteToken: string) {
         setPageState("verifying");
         try {
@@ -121,7 +115,14 @@ export default function InviteCallbackPage() {
             try { json = await res.json(); } catch { /* empty */ }
 
             if (res.ok && json.success && json.data?.token) {
-                localStorage.setItem(SESSION_TOKEN_KEY, json.data.token);
+                const token = json.data.token;
+
+                // ── Persist token in both localStorage AND cookie ────
+                // localStorage: used by authHeaders() for API calls
+                // cookie: read by middleware to protect routes
+                localStorage.setItem(SESSION_TOKEN_KEY, token);
+                document.cookie = `${SESSION_TOKEN_KEY}=${token}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Strict`;
+
                 sessionStorage.removeItem("admin_pending_email");
                 sessionStorage.removeItem("pending_oob_code");
                 sessionStorage.removeItem("pending_invite_token");
@@ -132,7 +133,7 @@ export default function InviteCallbackPage() {
                 return;
             }
 
-            if (res.status === 401)  setErrorMsg("This sign-in link is invalid or has expired.");
+            if (res.status === 401)       setErrorMsg("This sign-in link is invalid or has expired.");
             else if (res.status === 400)  setErrorMsg("Verification failed — email or code is incorrect.");
             else if (res.status === 404)  setErrorMsg("Invite token not found.");
             else if (res.status === 409)  setErrorMsg("This invite has already been used.");
@@ -147,7 +148,6 @@ export default function InviteCallbackPage() {
         }
     }
 
-    // Called when user manually types email after cross-tab/device loss
     function handleManualVerify() {
         const email = manualEmail.trim();
         if (!email) return;
@@ -174,7 +174,6 @@ export default function InviteCallbackPage() {
         doVerify(oobCode, email, inviteToken);
     }
 
-    // ── Render ────────────────────────────────────────────────────────────────
     return (
         <div className="root">
             <div className="blob blob-1" />
@@ -188,7 +187,6 @@ export default function InviteCallbackPage() {
                 </div>
                 <div className="divider-line" />
 
-                {/* LOADING */}
                 {(pageState === "loading" || pageState === "verifying") && (
                     <div className="state-block">
                         <div className="spinner-lg" />
@@ -199,7 +197,6 @@ export default function InviteCallbackPage() {
                     </div>
                 )}
 
-                {/* CHECK INBOX — magic link sent */}
                 {pageState === "check_inbox" && (
                     <div className="state-block">
                         <MailIcon />
@@ -214,7 +211,6 @@ export default function InviteCallbackPage() {
                     </div>
                 )}
 
-                {/* SUCCESS */}
                 {pageState === "success" && (
                     <div className="state-block">
                         <CheckCircleIcon color="#68d391" />
@@ -223,7 +219,6 @@ export default function InviteCallbackPage() {
                     </div>
                 )}
 
-                {/* MISSING EMAIL — opened in different browser */}
                 {pageState === "missing_email" && (
                     <div className="state-block" style={{ width: "100%" }}>
                         <AlertCircleIcon color="#f6ad55" />
@@ -253,7 +248,6 @@ export default function InviteCallbackPage() {
                     </div>
                 )}
 
-                {/* ERROR */}
                 {pageState === "error" && (
                     <div className="state-block">
                         <AlertCircleIcon color="#fc8181" />
@@ -265,7 +259,6 @@ export default function InviteCallbackPage() {
                     </div>
                 )}
 
-                {/* INVALID TOKEN */}
                 {pageState === "invalid_token" && (
                     <div className="state-block">
                         <AlertCircleIcon color="#fc8181" />
@@ -280,7 +273,6 @@ export default function InviteCallbackPage() {
                     </div>
                 )}
 
-                {/* TOKEN USED */}
                 {pageState === "token_used" && (
                     <div className="state-block">
                         <AlertCircleIcon color="#f6ad55" />
@@ -295,7 +287,6 @@ export default function InviteCallbackPage() {
                     </div>
                 )}
 
-                {/* TOKEN EXPIRED */}
                 {pageState === "token_expired" && (
                     <div className="state-block">
                         <AlertCircleIcon color="#f6ad55" />
@@ -316,12 +307,7 @@ export default function InviteCallbackPage() {
 
             <style>{`
                 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-                .root {
-                    min-height: 100vh; background: #0a0a0a;
-                    display: flex; align-items: center; justify-content: center;
-                    font-family: 'Geist', 'Inter', sans-serif;
-                    position: relative; overflow: hidden;
-                }
+                .root { min-height: 100vh; background: #0a0a0a; display: flex; align-items: center; justify-content: center; font-family: 'Geist', 'Inter', sans-serif; position: relative; overflow: hidden; }
                 .blob { position: absolute; border-radius: 50%; filter: blur(90px); pointer-events: none; opacity: 0.18; }
                 .blob-1 { width: 420px; height: 420px; background: radial-gradient(circle, #e53e3e 0%, transparent 70%); top: -100px; left: -80px; animation: drift1 12s ease-in-out infinite alternate; }
                 .blob-2 { width: 300px; height: 300px; background: radial-gradient(circle, #c53030 0%, transparent 70%); bottom: -80px; right: -60px; animation: drift2 14s ease-in-out infinite alternate; }
