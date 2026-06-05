@@ -14,17 +14,24 @@ import {
     Mail,
     Check,
     X,
+    Loader2,
+    AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { authHeaders, ADMIN_API_BASE } from "@/lib/authutils";
+
+const INVITE_URL = `${ADMIN_API_BASE}/invite`;
 
 const ROLES = [
-    { id: "member",  label: "Member",       desc: "View only access" },
-    { id: "admin",   label: "Admin",         desc: "Full access to all features" },
-    { id: "support", label: "Support Team",  desc: "Manage disputes & player issues" },
+    { id: "MEMBER",  label: "Member",       desc: "View only access" },
+    { id: "ADMIN",   label: "Admin",         desc: "Full access to all features" },
+    { id: "SUPPORT", label: "Support Team",  desc: "Manage disputes & player issues" },
 ];
+
+type InviteState = "idle" | "loading" | "success" | "error";
 
 export default function SettingsPage() {
     const [appEnabled, setAppEnabled] = useState(true);
@@ -49,19 +56,64 @@ export default function SettingsPage() {
     // Give Access modal state
     const [modalOpen, setModalOpen] = useState(false);
     const [email, setEmail] = useState("");
-    const [role, setRole] = useState("member");
-    const [sent, setSent] = useState(false);
+    const [role, setRole] = useState("MEMBER");
+    const [inviteState, setInviteState] = useState<InviteState>("idle");
+    const [inviteError, setInviteError] = useState("");
+    const [expiresAt, setExpiresAt] = useState("");
 
-    const handleSend = () => {
-        if (!email.trim()) return;
-        // TODO: POST /api/admin/invite  { email, role }
-        setSent(true);
+    const handleCloseModal = () => {
+        setModalOpen(false);
+        // Reset after close so next open is fresh
         setTimeout(() => {
-            setSent(false);
             setEmail("");
-            setRole("member");
-            setModalOpen(false);
-        }, 1500);
+            setRole("MEMBER");
+            setInviteState("idle");
+            setInviteError("");
+            setExpiresAt("");
+        }, 200);
+    };
+
+    const handleSend = async () => {
+        const trimmed = email.trim();
+        if (!trimmed) return;
+
+        setInviteState("loading");
+        setInviteError("");
+
+        try {
+            const res = await fetch(INVITE_URL, {
+                method: "POST",
+                headers: authHeaders(),
+                body: JSON.stringify({ email: trimmed, role }),
+            });
+
+            const json = await res.json();
+
+            if (res.ok && json.success) {
+                setExpiresAt(json.data?.expiresAt ?? "");
+                setInviteState("success");
+                return;
+            }
+
+            // ── Error cases from the API spec ──────────────────────
+            if (res.status === 403) {
+                setInviteError("You don't have permission to invite this role.");
+            } else if (res.status === 409) {
+                setInviteError("This email already has a pending invite or is already registered.");
+            } else if (res.status === 401) {
+                setInviteError("Your session has expired. Please log in again.");
+            } else if (res.status === 502) {
+                setInviteError("Failed to send the invite email. Please try again.");
+            } else {
+                setInviteError(json?.message ?? "Something went wrong. Please try again.");
+            }
+
+            setInviteState("error");
+
+        } catch {
+            setInviteError("Network error. Could not reach the server.");
+            setInviteState("error");
+        }
     };
 
     return (
@@ -112,30 +164,28 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
+                {/* Give Access Card */}
                 <div className="bg-zinc-900/40 border border-white/5 rounded-xl p-6 relative overflow-hidden group">
-    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-        <UserPlus className="h-24 w-24 text-brand-red" />
-    </div>
-
-    <div className="relative z-10 flex flex-col items-center justify-center lg:mt-8 mt-0 text-center">
-        <h3 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
-            <UserPlus className="h-5 w-5 text-brand-red" />
-            Give Access
-        </h3>
-
-        <p className="text-sm text-zinc-500 mb-4">
-            Invite someone to access the admin panel.
-        </p>
-
-        <button
-            onClick={() => setModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-red hover:bg-red-700 text-white text-sm font-medium transition-colors"
-        >
-            <UserPlus className="h-4 w-4" />
-            Invite Member
-        </button>
-    </div>
-</div>
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <UserPlus className="h-24 w-24 text-brand-red" />
+                    </div>
+                    <div className="relative z-10 flex flex-col items-center justify-center lg:mt-8 mt-0 text-center">
+                        <h3 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                            <UserPlus className="h-5 w-5 text-brand-red" />
+                            Give Access
+                        </h3>
+                        <p className="text-sm text-zinc-500 mb-4">
+                            Invite someone to access the admin panel.
+                        </p>
+                        <button
+                            onClick={() => setModalOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-red hover:bg-red-700 text-white text-sm font-medium transition-colors"
+                        >
+                            <UserPlus className="h-4 w-4" />
+                            Invite Member
+                        </button>
+                    </div>
+                </div>
 
                 {/* Game Configuration */}
                 <div className="bg-zinc-900/40 border border-white/5 rounded-xl p-6 lg:col-span-2">
@@ -267,75 +317,128 @@ export default function SettingsPage() {
 
             </div>
 
-            {/* Give Access Modal */}
+            {/* ── Give Access Modal ─────────────────────────────────────────── */}
             {modalOpen && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-                    onClick={() => setModalOpen(false)}
+                    onClick={handleCloseModal}
                 >
                     <div
                         className="relative w-full max-w-sm mx-4 bg-zinc-900 border border-white/8 rounded-2xl p-6 shadow-2xl"
                         onClick={(e) => e.stopPropagation()}
                     >
+                        {/* Modal Header */}
                         <div className="flex items-center justify-between mb-5">
                             <h4 className="text-white font-bold text-base">Give Access</h4>
-                            <button onClick={() => setModalOpen(false)} className="text-zinc-500 hover:text-white transition-colors">
+                            <button onClick={handleCloseModal} className="text-zinc-500 hover:text-white transition-colors">
                                 <X className="h-4 w-4" />
                             </button>
                         </div>
 
-                        <div className="mb-5">
-                            <label className="text-xs text-zinc-400 font-medium mb-1.5 block">Email address</label>
-                            <div className="flex items-center gap-2 bg-zinc-800 border border-white/6 rounded-lg px-3 py-2.5">
-                                <Mail className="h-4 w-4 text-zinc-500 flex-shrink-0" />
-                                <input
-                                    type="email"
-                                    placeholder="Enter email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="bg-transparent text-sm text-white placeholder-zinc-600 outline-none w-full"
-                                />
+                        {/* ── SUCCESS STATE ── */}
+                        {inviteState === "success" ? (
+                            <div className="flex flex-col items-center gap-3 py-6 text-center">
+                                <div className="h-12 w-12 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center">
+                                    <Check className="h-6 w-6 text-green-400" />
+                                </div>
+                                <p className="text-white font-semibold">Invite Sent!</p>
+                                <p className="text-zinc-400 text-sm">
+                                    An invite email has been sent to{" "}
+                                    <span className="text-white font-medium">{email}</span>.
+                                </p>
+                                {expiresAt && (
+                                    <p className="text-zinc-600 text-xs">
+                                        Expires: {new Date(expiresAt).toLocaleString()}
+                                    </p>
+                                )}
+                                <button
+                                    onClick={handleCloseModal}
+                                    className="mt-2 px-5 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-medium transition-colors"
+                                >
+                                    Done
+                                </button>
                             </div>
-                        </div>
+                        ) : (
+                            <>
+                                {/* Email Input */}
+                                <div className="mb-5">
+                                    <label className="text-xs text-zinc-400 font-medium mb-1.5 block">Email address</label>
+                                    <div className={`flex items-center gap-2 bg-zinc-800 border rounded-lg px-3 py-2.5 ${
+                                        inviteState === "error" ? "border-red-500/40" : "border-white/6"
+                                    }`}>
+                                        <Mail className="h-4 w-4 text-zinc-500 flex-shrink-0" />
+                                        <input
+                                            type="email"
+                                            placeholder="Enter email"
+                                            value={email}
+                                            onChange={(e) => {
+                                                setEmail(e.target.value);
+                                                if (inviteState === "error") {
+                                                    setInviteState("idle");
+                                                    setInviteError("");
+                                                }
+                                            }}
+                                            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                                            className="bg-transparent text-sm text-white placeholder-zinc-600 outline-none w-full"
+                                            disabled={inviteState === "loading"}
+                                        />
+                                    </div>
+                                </div>
 
-                        <div className="mb-6">
-                            <label className="text-xs text-zinc-400 font-medium mb-2 block">Role</label>
-                            <div className="space-y-2">
-                                {ROLES.map((r) => (
-                                    <button
-                                        key={r.id}
-                                        onClick={() => setRole(r.id)}
-                                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-left transition-colors ${
-                                            role === r.id
-                                                ? "border-brand-red/50 bg-brand-red/8 text-white"
-                                                : "border-white/5 bg-zinc-800/50 text-zinc-400 hover:border-white/10"
-                                        }`}
-                                    >
-                                        <div>
-                                            <p className="text-sm font-medium leading-none mb-0.5">{r.label}</p>
-                                            <p className="text-xs text-zinc-500">{r.desc}</p>
-                                        </div>
-                                        <div className={`h-4 w-4 rounded-full border flex items-center justify-center flex-shrink-0 ${
-                                            role === r.id ? "border-brand-red bg-brand-red" : "border-zinc-600"
-                                        }`}>
-                                            {role === r.id && <Check className="h-2.5 w-2.5 text-white" />}
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+                                {/* Role Picker */}
+                                <div className="mb-5">
+                                    <label className="text-xs text-zinc-400 font-medium mb-2 block">Role</label>
+                                    <div className="space-y-2">
+                                        {ROLES.map((r) => (
+                                            <button
+                                                key={r.id}
+                                                onClick={() => setRole(r.id)}
+                                                disabled={inviteState === "loading"}
+                                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-left transition-colors ${
+                                                    role === r.id
+                                                        ? "border-brand-red/50 bg-brand-red/8 text-white"
+                                                        : "border-white/5 bg-zinc-800/50 text-zinc-400 hover:border-white/10"
+                                                }`}
+                                            >
+                                                <div>
+                                                    <p className="text-sm font-medium leading-none mb-0.5">{r.label}</p>
+                                                    <p className="text-xs text-zinc-500">{r.desc}</p>
+                                                </div>
+                                                <div className={`h-4 w-4 rounded-full border flex items-center justify-center flex-shrink-0 ${
+                                                    role === r.id ? "border-brand-red bg-brand-red" : "border-zinc-600"
+                                                }`}>
+                                                    {role === r.id && <Check className="h-2.5 w-2.5 text-white" />}
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
 
-                        <button
-                            onClick={handleSend}
-                            disabled={!email.trim() || sent}
-                            className={`w-full py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                                sent
-                                    ? "bg-green-600 text-white"
-                                    : "bg-brand-red hover:bg-red-700 text-white disabled:opacity-40 disabled:cursor-not-allowed"
-                            }`}
-                        >
-                            {sent ? "✓ Invite Sent" : "Send Invite"}
-                        </button>
+                                {/* Error message */}
+                                {inviteState === "error" && inviteError && (
+                                    <div className="flex items-start gap-2 mb-4 bg-red-500/8 border border-red-500/20 rounded-lg px-3 py-2.5">
+                                        <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
+                                        <p className="text-xs text-red-400 leading-relaxed">{inviteError}</p>
+                                    </div>
+                                )}
+
+                                {/* Send Button */}
+                                <button
+                                    onClick={handleSend}
+                                    disabled={!email.trim() || inviteState === "loading"}
+                                    className="w-full py-2.5 rounded-lg text-sm font-semibold transition-all bg-brand-red hover:bg-red-700 text-white disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    {inviteState === "loading" ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            Sending…
+                                        </>
+                                    ) : (
+                                        "Send Invite"
+                                    )}
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
