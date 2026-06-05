@@ -6,41 +6,45 @@ import {
     Briefcase,
     Eye,
     CheckCircle2,
-    Calendar,
     Star,
     Mail,
-    Phone
+    Phone,
+    RefreshCw,
+    AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OrganizerProfileDialog } from "@/components/organizers/OrganizerProfileDialog";
+import { authHeaders } from "@/lib/authutils"
 
-// Organizer Data Interface — matched to API response shape
+
+const ADMIN_API_BASE =
+    process.env.NEXT_PUBLIC_ADMIN_API_URL ??
+    "https://corpse-backend-dev.up.railway.app/api/admin";
+
+const ORGANIZERS_URL = `${ADMIN_API_BASE}/organizers`;
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface Organizer {
     id: string;
     name: string;
     email: string;
     phone: string;
-    // API provides state/district instead of country
     state: string | null;
     district: string | null;
-    // API: isVerified + isPhoneVerified instead of accountStatus/verificationStatus
     isVerified: boolean;
     isPhoneVerified: boolean;
-    // API has no status field — default to "Active"
     status: "Active" | "Inactive" | "Banned" | "Suspended";
     createdAt: string;
     updatedAt: string;
-    // API has no rating field
     rating: number | null;
-    // Extra API fields we preserve
     type: string;
     logoUrl: string | null;
     bannerUrl: string | null;
     description: string | null;
 }
 
-// Pagination meta from API
 interface PaginationMeta {
     page: number;
     limit: number;
@@ -48,7 +52,63 @@ interface PaginationMeta {
     totalPages: number;
 }
 
-const API_URL = "https://corpse-backend-dev.up.railway.app/api/admin/organizers";
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatDate(iso: string): string {
+    try {
+        return new Date(iso).toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+        });
+    } catch {
+        return iso;
+    }
+}
+
+function timeAgo(iso: string): string {
+    try {
+        const diff = Date.now() - new Date(iso).getTime();
+        const hours = Math.floor(diff / 3_600_000);
+        if (hours < 1) return "Just now";
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        if (days < 30) return `${days}d ago`;
+        return `${Math.floor(days / 30)}mo ago`;
+    } catch {
+        return "—";
+    }
+}
+
+function locationLabel(org: Organizer): string {
+    if (org.district && org.state) return `${org.district}, ${org.state}`;
+    if (org.state) return org.state;
+    if (org.district) return org.district;
+    return "—";
+}
+
+function mapApiItem(item: any): Organizer {
+    return {
+        id: item.id,
+        name: item.name,
+        email: item.email,
+        phone: item.phone,
+        state: item.state ?? null,
+        district: item.district ?? null,
+        isVerified: item.isVerified ?? false,
+        isPhoneVerified: item.isPhoneVerified ?? false,
+        status: "Active",
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        rating: null,
+        type: item.type,
+        logoUrl: item.logoUrl ?? null,
+        bannerUrl: item.bannerUrl ?? null,
+        description: item.description ?? null,
+    };
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function OrganizersPage() {
     const [searchQuery, setSearchQuery] = useState("");
@@ -69,29 +129,25 @@ export default function OrganizersPage() {
         setIsLoading(true);
         setError(null);
         try {
-            const res = await fetch(`${API_URL}?page=${page}&limit=${pagination.limit}`);
+            const res = await fetch(
+                `${ORGANIZERS_URL}?page=${page}&limit=${pagination.limit}`,
+                { headers: authHeaders() }
+            );
+
+            if (res.status === 401 || res.status === 403) {
+                setError("Session expired or unauthorized. Please log in again.");
+                return;
+            }
+
+            if (!res.ok) {
+                setError(`Server error: ${res.status} ${res.statusText}`);
+                return;
+            }
+
             const json = await res.json();
+
             if (json.success) {
-                // Map API fields → Organizer interface
-                const mapped: Organizer[] = json.data.data.map((item: any) => ({
-                    id: item.id,
-                    name: item.name,
-                    email: item.email,
-                    phone: item.phone,
-                    state: item.state ?? null,
-                    district: item.district ?? null,
-                    isVerified: item.isVerified ?? false,
-                    isPhoneVerified: item.isPhoneVerified ?? false,
-                    status: "Active", // API has no status field
-                    createdAt: item.createdAt,
-                    updatedAt: item.updatedAt,
-                    rating: null, // API has no rating field
-                    type: item.type,
-                    logoUrl: item.logoUrl ?? null,
-                    bannerUrl: item.bannerUrl ?? null,
-                    description: item.description ?? null,
-                }));
-                setOrganizers(mapped);
+                setOrganizers(json.data.data.map(mapApiItem));
                 setPagination({
                     page: json.data.page,
                     limit: json.data.limit,
@@ -99,9 +155,9 @@ export default function OrganizersPage() {
                     totalPages: json.data.totalPages,
                 });
             } else {
-                setError("Failed to fetch organizers.");
+                setError(json.message ?? "Failed to fetch organizers.");
             }
-        } catch (err) {
+        } catch {
             setError("Network error. Could not reach the server.");
         } finally {
             setIsLoading(false);
@@ -110,48 +166,24 @@ export default function OrganizersPage() {
 
     useEffect(() => {
         fetchOrganizers(1);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    const filteredOrganizers = organizers.filter(
+        (org) =>
+            org.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            org.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            org.email.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     const handleViewProfile = (organizer: Organizer) => {
         setSelectedOrganizer(organizer);
         setIsProfileOpen(true);
     };
 
-    const filteredOrganizers = organizers.filter(org =>
-        org.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        org.id.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    const formatDate = (iso: string) => {
-        try {
-            return new Date(iso).toLocaleDateString();
-        } catch {
-            return iso;
-        }
-    };
-
-    const timeAgo = (iso: string) => {
-        try {
-            const diff = Date.now() - new Date(iso).getTime();
-            const hours = Math.floor(diff / 3600000);
-            if (hours < 1) return "Just now";
-            if (hours < 24) return `${hours}h ago`;
-            return `${Math.floor(hours / 24)}d ago`;
-        } catch {
-            return "—";
-        }
-    };
-
-    const locationLabel = (org: Organizer) => {
-        if (org.district && org.state) return `${org.district}, ${org.state}`;
-        if (org.state) return org.state;
-        if (org.district) return org.district;
-        return "—";
-    };
-
     return (
         <div className="flex flex-col gap-6 w-full h-full overflow-hidden">
-            {/* Header Section */}
+            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-2 font-naston">
@@ -164,10 +196,20 @@ export default function OrganizersPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isLoading}
+                        className="h-9 border-white/5 bg-transparent hover:bg-white/5 hover:text-white text-zinc-400"
+                        onClick={() => fetchOrganizers(pagination.page)}
+                    >
+                        <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+                    </Button>
+
                     <div className="relative w-72">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
                         <Input
-                            placeholder="Search organizers..."
+                            placeholder="Search by name, ID or email..."
                             className="pl-9 bg-zinc-950/50 border-white/10 focus-visible:ring-brand-red/20 text-zinc-300"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -176,16 +218,26 @@ export default function OrganizersPage() {
                 </div>
             </div>
 
-            {/* Data Table Container */}
+            {/* Table */}
             <div className="rounded-xl border border-white/5 bg-zinc-900/20 backdrop-blur-sm overflow-hidden flex-1 relative flex flex-col">
                 <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent pb-4">
                     {isLoading ? (
-                        <div className="flex items-center justify-center py-20 text-zinc-500 text-sm">
+                        <div className="flex items-center justify-center py-20 gap-2 text-zinc-500 text-sm">
+                            <RefreshCw className="h-4 w-4 animate-spin" />
                             Loading organizers...
                         </div>
                     ) : error ? (
-                        <div className="flex items-center justify-center py-20 text-red-400 text-sm">
-                            {error}
+                        <div className="flex flex-col items-center justify-center py-20 gap-3 text-sm">
+                            <AlertCircle className="h-6 w-6 text-red-400" />
+                            <span className="text-red-400 text-center max-w-md">{error}</span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-white/10 hover:bg-white/5 text-zinc-400"
+                                onClick={() => fetchOrganizers(pagination.page)}
+                            >
+                                Retry
+                            </Button>
                         </div>
                     ) : (
                         <table className="w-full text-sm text-left">
@@ -213,8 +265,11 @@ export default function OrganizersPage() {
                                             key={org.id}
                                             className="group hover:bg-white/[0.02] transition-colors"
                                         >
-                                            {/* Org ID — truncated for readability */}
-                                            <td className="px-6 py-4 font-suisse text-zinc-400 text-xs truncate max-w-[120px]" title={org.id}>
+                                            {/* Org ID */}
+                                            <td
+                                                className="px-6 py-4 font-suisse text-zinc-400 text-xs truncate max-w-[120px]"
+                                                title={org.id}
+                                            >
                                                 {org.id.length > 12 ? `${org.id.slice(0, 12)}…` : org.id}
                                             </td>
 
@@ -228,7 +283,8 @@ export default function OrganizersPage() {
                                                         )}
                                                     </div>
                                                     <div className="text-xs text-zinc-500 font-suisse flex items-center gap-1">
-                                                        <Mail className="h-3 w-3" /> {org.email}
+                                                        <Mail className="h-3 w-3" />
+                                                        {org.email}
                                                     </div>
                                                 </div>
                                             </td>
@@ -237,7 +293,8 @@ export default function OrganizersPage() {
                                             <td className="px-6 py-4">
                                                 <div className="text-zinc-300 text-xs flex flex-col gap-1">
                                                     <span className="flex items-center gap-1">
-                                                        <Phone className="h-3 w-3 text-zinc-500" /> {org.phone}
+                                                        <Phone className="h-3 w-3 text-zinc-500" />
+                                                        {org.phone}
                                                     </span>
                                                     <span className="text-zinc-500">{locationLabel(org)}</span>
                                                 </div>
@@ -246,19 +303,25 @@ export default function OrganizersPage() {
                                             {/* Status */}
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col gap-1 items-start">
-                                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${
-                                                        org.isVerified
-                                                            ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                                                            : 'bg-zinc-800 text-zinc-400 border-zinc-700'
-                                                    }`}>
+                                                    <span
+                                                        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                                                            org.isVerified
+                                                                ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                                                : "bg-zinc-800 text-zinc-400 border-zinc-700"
+                                                        }`}
+                                                    >
                                                         {org.isVerified ? "Verified" : "Unverified"}
                                                     </span>
-                                                    <span className={`inline-flex items-center gap-1 text-[10px] ${
-                                                        org.status === 'Active' ? 'text-green-400' : 'text-red-400'
-                                                    }`}>
-                                                        <div className={`w-1.5 h-1.5 rounded-full ${
-                                                            org.status === 'Active' ? 'bg-green-500' : 'bg-red-500'
-                                                        }`}></div>
+                                                    <span
+                                                        className={`inline-flex items-center gap-1 text-[10px] ${
+                                                            org.status === "Active" ? "text-green-400" : "text-red-400"
+                                                        }`}
+                                                    >
+                                                        <div
+                                                            className={`w-1.5 h-1.5 rounded-full ${
+                                                                org.status === "Active" ? "bg-green-500" : "bg-red-500"
+                                                            }`}
+                                                        />
                                                         {org.status}
                                                     </span>
                                                 </div>
@@ -274,7 +337,7 @@ export default function OrganizersPage() {
                                                 </div>
                                             </td>
 
-                                            {/* Rating — N/A since API has no rating */}
+                                            {/* Rating */}
                                             <td className="px-6 py-4 text-zinc-500 font-suisse text-xs">
                                                 <div className="flex items-center gap-1">
                                                     <Star className="h-3 w-3 text-zinc-600" />
@@ -289,7 +352,8 @@ export default function OrganizersPage() {
                                                     className="bg-zinc-800 hover:bg-brand-red hover:text-white text-zinc-300 border border-white/5 transition-all shadow-lg text-xs"
                                                     onClick={() => handleViewProfile(org)}
                                                 >
-                                                    <Eye className="mr-2 h-3 w-3" /> View Profile
+                                                    <Eye className="mr-2 h-3 w-3" />
+                                                    View Profile
                                                 </Button>
                                             </td>
                                         </tr>
@@ -301,12 +365,17 @@ export default function OrganizersPage() {
                 </div>
             </div>
 
-            {/* Footer */}
+            {/* Footer / Pagination */}
             <div className="flex items-center justify-between text-xs text-zinc-500 px-1">
                 <div>
-                    Showing {filteredOrganizers.length} of {pagination.totalCount} organizer{pagination.totalCount !== 1 ? "s" : ""}
+                    Showing {filteredOrganizers.length} of {pagination.totalCount} organizer
+                    {pagination.totalCount !== 1 ? "s" : ""}
+                    {searchQuery && ` (filtered)`}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
+                    <span className="text-zinc-600">
+                        Page {pagination.page} of {pagination.totalPages}
+                    </span>
                     <Button
                         variant="outline"
                         size="sm"
