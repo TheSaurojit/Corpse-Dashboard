@@ -1,8 +1,3 @@
-// FILE MUST BE AT: app/admin/auth/callback/page.tsx
-//
-// Firebase redirects to: /admin/auth/callback?oobCode=xxx&mode=signIn
-// This matches that exact path.
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";
