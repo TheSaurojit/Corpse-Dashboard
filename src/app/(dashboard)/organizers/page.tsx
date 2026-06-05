@@ -15,12 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OrganizerProfileDialog } from "@/components/organizers/OrganizerProfileDialog";
-import { authHeaders } from "@/lib/authutils"
-
-
-const ADMIN_API_BASE =
-    process.env.NEXT_PUBLIC_ADMIN_API_URL ??
-    "https://corpse-backend-dev.up.railway.app/api/admin";
+import { authHeaders, ADMIN_API_BASE } from "@/lib/authutils";
 
 const ORGANIZERS_URL = `${ADMIN_API_BASE}/organizers`;
 

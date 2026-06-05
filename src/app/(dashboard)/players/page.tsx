@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PlayerProfileDialog } from "@/components/players/PlayerProfileDialog";
+import { authHeaders, ADMIN_API_BASE } from "@/lib/authutils";
 
 
 interface ApiUser {
@@ -70,8 +71,7 @@ interface Player {
     dateOfBirth: string | null;
 }
 
-
-const API_BASE = "https://corpse-backend-dev.up.railway.app/api/admin/users";
+const PLAYERS_URL = `${ADMIN_API_BASE}/users`;
 
 function mapUser(u: ApiUser): Player {
     const nameParts = [u.fname, u.lname].filter(Boolean);
@@ -144,7 +144,6 @@ export default function PlayersPage() {
         return () => clearTimeout(t);
     }, [searchQuery]);
 
-    // Fetch data
     const fetchPlayers = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -154,8 +153,17 @@ export default function PlayersPage() {
                 limit: String(limit),
                 ...(debouncedQuery ? { search: debouncedQuery } : {}),
             });
-            const res = await fetch(`${API_BASE}?${params}`);
+            const res = await fetch(`${PLAYERS_URL}?${params}`, {
+                headers: authHeaders(),
+            });
+
+            if (res.status === 401 || res.status === 403) {
+                setError("Session expired or unauthorized. Please log in again.");
+                return;
+            }
+
             if (!res.ok) throw new Error(`Server error: ${res.status}`);
+
             const json: ApiResponse = await res.json();
             if (!json.success) throw new Error(json.message || "Failed to fetch");
             setPlayers(json.data.data.map(mapUser));
