@@ -64,7 +64,7 @@ export function Navbar() {
     useEffect(() => {
         const verifyToken = async () => {
             try {
-                const res = await fetch(`${API_BASE}/auth/verfiy-token`, {
+                const res = await fetch(`${API_BASE}/auth/verify-token`, {
                     headers: authHeaders(),
                 });
 
