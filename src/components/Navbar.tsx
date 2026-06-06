@@ -4,19 +4,12 @@ import { Search, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { useEffect, useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE, authHeaders, clearSession, SESSION_TOKEN_KEY } from "@/lib/authutils";
+import { useAuth } from "@/lib/authContext";
 
 const LOGIN_ROUTE = "/admin/login";
-
-interface UserProfile {
-    email: string;
-    role: string;
-    lastActiveAt?: string;
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function getInitials(email: string): string {
     const name = email.split("@")[0];
@@ -52,45 +45,14 @@ function roleColor(role: string): string {
     }
 }
 
-
 export function Navbar() {
     const router = useRouter();
-    const [profile, setProfile] = useState<UserProfile | null>(null);
+    const { profile } = useAuth();
     const [tooltipOpen, setTooltipOpen] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
     const tooltipRef = useRef<HTMLDivElement>(null);
     const avatarRef = useRef<HTMLButtonElement>(null);
 
-    useEffect(() => {
-        const verifyToken = async () => {
-            try {
-                const res = await fetch(`${API_BASE}/auth/verfiy-token`, {
-                    headers: authHeaders(),
-                });
-
-                if (res.status === 401) {
-                    // Token expired or revoked — force logout
-                    doLogoutCleanup();
-                    return;
-                }
-
-                if (res.ok) {
-                    const json = await res.json();
-                    if (json.success && json.data) {
-                        setProfile(json.data);
-                    }
-                }
-            } catch {
-                // Network error — don't force logout, user might be offline briefly
-                console.warn("[Navbar] Token verify failed — network error");
-            }
-        };
-
-        verifyToken();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    // ── Close tooltip on outside click ────────────────────────────────────────
     useEffect(() => {
         const handler = (e: MouseEvent) => {
             if (
@@ -106,14 +68,12 @@ export function Navbar() {
         return () => document.removeEventListener("mousedown", handler);
     }, []);
 
-    // ── Cleanup: clear localStorage + cookie + redirect ───────────────────────
     function doLogoutCleanup() {
         clearSession();
         document.cookie = `${SESSION_TOKEN_KEY}=; path=/; max-age=0`;
         router.replace(LOGIN_ROUTE);
     }
 
-    // ── Logout handler ────────────────────────────────────────────────────────
     const handleLogout = async () => {
         setLoggingOut(true);
         try {
@@ -152,7 +112,6 @@ export function Navbar() {
             </div>
 
             <div className="flex items-center gap-3 relative z-10">
-
                 <Button
                     variant="ghost"
                     onClick={handleLogout}
@@ -179,18 +138,15 @@ export function Navbar() {
                         {profile ? getInitials(profile.email) : "?"}
                     </button>
 
-                    {/* Tooltip dropdown */}
                     {tooltipOpen && (
                         <div
                             ref={tooltipRef}
                             className="absolute right-0 top-12 w-64 bg-zinc-900 border border-white/8 rounded-xl shadow-2xl shadow-black/60 p-4 z-50 animate-in"
                         >
-                            {/* Arrow */}
                             <div className="absolute -top-1.5 right-3 w-3 h-3 bg-zinc-900 border-l border-t border-white/8 rotate-45" />
 
                             {profile ? (
                                 <>
-                                    {/* Avatar large */}
                                     <div className="flex items-center gap-3 mb-3">
                                         <div
                                             className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
@@ -213,7 +169,6 @@ export function Navbar() {
 
                                     <div className="h-px bg-white/5 mb-3" />
 
-                                    {/* Role badge */}
                                     <div className="flex items-center justify-between mb-2">
                                         <span className="text-xs text-zinc-500">Role</span>
                                         <span
@@ -228,7 +183,6 @@ export function Navbar() {
                                         </span>
                                     </div>
 
-                                    {/* Last active */}
                                     {profile.lastActiveAt && (
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs text-zinc-500">Last active</span>
@@ -240,7 +194,6 @@ export function Navbar() {
 
                                     <div className="h-px bg-white/5 my-3" />
 
-                                    {/* Logout inside tooltip too */}
                                     <button
                                         onClick={handleLogout}
                                         disabled={loggingOut}

@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { authHeaders, API_BASE } from "@/lib/authutils";
+import { useAuth } from "@/lib/authContext";
 
 const INVITE_URL = `${API_BASE}/invite`;
 
@@ -34,6 +35,11 @@ const ROLES = [
 type InviteState = "idle" | "loading" | "success" | "error";
 
 export default function SettingsPage() {
+    const { profile } = useAuth();
+
+    // Only OWNER and ADMIN can invite
+    const canInvite = profile?.role === "OWNER" || profile?.role === "ADMIN";
+
     const [appEnabled, setAppEnabled] = useState(true);
     const [guildVerification, setGuildVerification] = useState(true);
     const [matchStartAlert, setMatchStartAlert] = useState(15);
@@ -53,7 +59,6 @@ export default function SettingsPage() {
         tDM: false
     });
 
-    // Give Access modal state
     const [modalOpen, setModalOpen] = useState(false);
     const [email, setEmail] = useState("");
     const [role, setRole] = useState("MEMBER");
@@ -63,7 +68,6 @@ export default function SettingsPage() {
 
     const handleCloseModal = () => {
         setModalOpen(false);
-        // Reset after close so next open is fresh
         setTimeout(() => {
             setEmail("");
             setRole("MEMBER");
@@ -95,7 +99,6 @@ export default function SettingsPage() {
                 return;
             }
 
-            // ── Error cases from the API spec ──────────────────────
             if (res.status === 403) {
                 setInviteError("You don't have permission to invite this role.");
             } else if (res.status === 409) {
@@ -177,13 +180,29 @@ export default function SettingsPage() {
                         <p className="text-sm text-zinc-500 mb-4">
                             Invite someone to access the admin panel.
                         </p>
-                        <button
-                            onClick={() => setModalOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-red hover:bg-red-700 text-white text-sm font-medium transition-colors"
-                        >
-                            <UserPlus className="h-4 w-4" />
-                            Invite Member
-                        </button>
+
+                        {/* ── Disabled for MEMBER and SUPPORT ── */}
+                        <div className="relative group/btn">
+                            <button
+                                onClick={() => canInvite && setModalOpen(true)}
+                                disabled={!canInvite}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                    canInvite
+                                        ? "bg-brand-red hover:bg-red-700 text-white cursor-pointer"
+                                        : "bg-zinc-800 text-zinc-500 cursor-not-allowed opacity-60"
+                                }`}
+                            >
+                                <UserPlus className="h-4 w-4" />
+                                Invite Member
+                            </button>
+
+                            {/* Tooltip on hover when disabled */}
+                            {!canInvite && (
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-zinc-800 border border-white/10 rounded-lg text-xs text-zinc-400 whitespace-nowrap opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none">
+                                    Only Owners and Admins can invite
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -327,7 +346,6 @@ export default function SettingsPage() {
                         className="relative w-full max-w-sm mx-4 bg-zinc-900 border border-white/8 rounded-2xl p-6 shadow-2xl"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        {/* Modal Header */}
                         <div className="flex items-center justify-between mb-5">
                             <h4 className="text-white font-bold text-base">Give Access</h4>
                             <button onClick={handleCloseModal} className="text-zinc-500 hover:text-white transition-colors">
@@ -335,7 +353,6 @@ export default function SettingsPage() {
                             </button>
                         </div>
 
-                        {/* ── SUCCESS STATE ── */}
                         {inviteState === "success" ? (
                             <div className="flex flex-col items-center gap-3 py-6 text-center">
                                 <div className="h-12 w-12 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center">
@@ -360,7 +377,6 @@ export default function SettingsPage() {
                             </div>
                         ) : (
                             <>
-                                {/* Email Input */}
                                 <div className="mb-5">
                                     <label className="text-xs text-zinc-400 font-medium mb-1.5 block">Email address</label>
                                     <div className={`flex items-center gap-2 bg-zinc-800 border rounded-lg px-3 py-2.5 ${
@@ -385,7 +401,6 @@ export default function SettingsPage() {
                                     </div>
                                 </div>
 
-                                {/* Role Picker */}
                                 <div className="mb-5">
                                     <label className="text-xs text-zinc-400 font-medium mb-2 block">Role</label>
                                     <div className="space-y-2">
@@ -414,7 +429,6 @@ export default function SettingsPage() {
                                     </div>
                                 </div>
 
-                                {/* Error message */}
                                 {inviteState === "error" && inviteError && (
                                     <div className="flex items-start gap-2 mb-4 bg-red-500/8 border border-red-500/20 rounded-lg px-3 py-2.5">
                                         <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
@@ -422,7 +436,6 @@ export default function SettingsPage() {
                                     </div>
                                 )}
 
-                                {/* Send Button */}
                                 <button
                                     onClick={handleSend}
                                     disabled={!email.trim() || inviteState === "loading"}
