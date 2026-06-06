@@ -16,6 +16,10 @@ const PUBLIC_PATHS = [
 ];
 
 export function middleware(req: NextRequest) {
+    if (process.env.NODE_ENV === "development") {
+        return NextResponse.next();
+    }
+    
     const { pathname } = req.nextUrl;
 
     // Allow public paths through

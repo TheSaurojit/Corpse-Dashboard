@@ -1,24 +1,12 @@
-// lib/authUtils.ts
-//
-// All API calls go through /api/proxy/* (Next.js server-side proxy)
-// instead of hitting Railway directly from the browser.
-// ─────────────────────────────────────────────────────────────────────────────
-
 export const SESSION_TOKEN_KEY = "admin_session_token";
 
-/**
- * Use this in ALL client components for every fetch call.
- * Goes through the Next.js proxy → avoids CORS, hides Railway URL.
- */
 export const API_BASE = "/api/proxy";
 
-/** Returns the stored session token, or empty string if not found */
 export function getSessionToken(): string {
     if (typeof window === "undefined") return "";
     return localStorage.getItem(SESSION_TOKEN_KEY) ?? "";
 }
 
-/** Returns headers with Authorization: Bearer <token> for all API calls */
 export function authHeaders(): HeadersInit {
     const token = getSessionToken();
     return {
@@ -27,8 +15,29 @@ export function authHeaders(): HeadersInit {
     };
 }
 
-/** Call this on logout to clear the stored token */
 export function clearSession(): void {
     if (typeof window === "undefined") return;
     localStorage.removeItem(SESSION_TOKEN_KEY);
+    document.cookie = `${SESSION_TOKEN_KEY}=; path=/; max-age=0`;
+}
+
+
+export async function apiFetch(
+    path: string,
+    options?: RequestInit
+): Promise<Response> {
+    const res = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers: {
+            ...authHeaders(),
+            ...(options?.headers ?? {}),
+        },
+    });
+
+    if (res.status === 401) {
+        clearSession();
+        window.location.href = "/admin/login";
+    }
+
+    return res;
 }
