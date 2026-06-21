@@ -112,15 +112,7 @@ export function Navbar() {
             </div>
 
             <div className="flex items-center gap-3 relative z-10">
-                <Button
-                    variant="ghost"
-                    onClick={handleLogout}
-                    disabled={loggingOut}
-                    className="text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
-                >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>{loggingOut ? "Logging out…" : "Logout"}</span>
-                </Button>
+                
 
                 <div className="relative">
                     <button

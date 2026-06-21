@@ -4,8 +4,6 @@ const BACKEND_BASE =
     process.env.ADMIN_API_URL ??
     "https://corpse-backend-dev.up.railway.app/api/admin";
 
-// 15 second timeout — if Railway doesn't respond, fail fast
-const TIMEOUT_MS = 15_000;
 
 async function handler(
     req: NextRequest,
@@ -33,7 +31,6 @@ async function handler(
 
     try {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
         const backendRes = await fetch(targetUrl, {
             method: req.method,
@@ -41,8 +38,6 @@ async function handler(
             body,
             signal: controller.signal,
         });
-
-        clearTimeout(timer);
 
         const data = await backendRes.text();
         console.log(`[PROXY] Response: ${backendRes.status}`);
