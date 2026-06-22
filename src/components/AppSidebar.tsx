@@ -34,7 +34,8 @@ import {
     ShieldAlert,
     ChevronRight,
     Smartphone,
-    Building2
+    Building2,
+    LayoutTemplate
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -45,6 +46,7 @@ const sidebarItems = [
     { title: "Dashboard", url: "/", icon: LayoutDashboard },
     // { title: "Tournaments", url: "#", icon: Trophy },
     { title: "Arena", url: "/arena", icon: Swords },
+    { title: "Templates", url: "/templates", icon: LayoutTemplate },
     { title: "Players", url: "/players", icon: Users },
     { title: "Organizers", url: "/organizers", icon: Briefcase },
     { title: "Guilds / Teams", url: "/guilds", icon: Shield },

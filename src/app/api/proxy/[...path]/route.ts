@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND_BASE =
-    process.env.ADMIN_API_URL ??
-    "https://corpse-backend-dev.up.railway.app/api/admin";
+const BACKEND_BASE = process.env.ADMIN_API_URL;
 
 // 15 second timeout — if Railway doesn't respond, fail fast
 const TIMEOUT_MS = 15_000;
@@ -19,16 +17,32 @@ async function handler(
 
     console.log(`[PROXY] ${req.method} ${targetUrl}`);
 
-    const forwardHeaders: Record<string, string> = {
-        "Content-Type": req.headers.get("Content-Type") ?? "application/json",
-    };
+    const contentType = req.headers.get("Content-Type") ?? "";
+    const isMultipart = contentType.startsWith("multipart/form-data");
+
+    const forwardHeaders: Record<string, string> = {};
+
+    // Always forward the exact Content-Type from the client.
+    // For multipart this includes the boundary string — never override it.
+    if (contentType) {
+        forwardHeaders["Content-Type"] = contentType;
+    } else {
+        forwardHeaders["Content-Type"] = "application/json";
+    }
 
     const auth = req.headers.get("Authorization");
     if (auth) forwardHeaders["Authorization"] = auth;
 
-    let body: string | undefined;
+    // For multipart: stream the raw body directly — buffering it breaks the boundary.
+    // For JSON/text: read as text, same as before.
+    let body: ReadableStream | string | undefined;
     if (["POST", "PUT", "PATCH"].includes(req.method)) {
-        body = await req.text();
+        if (isMultipart) {
+            // Pipe the raw stream straight to the backend without buffering
+            body = req.body ?? undefined;
+        } else {
+            body = await req.text();
+        }
     }
 
     try {
@@ -39,6 +53,9 @@ async function handler(
             method: req.method,
             headers: forwardHeaders,
             body,
+            // Required for streaming body in Node.js fetch
+            // @ts-expect-error – duplex is needed when body is a ReadableStream
+            duplex: isMultipart ? "half" : undefined,
             signal: controller.signal,
         });
 

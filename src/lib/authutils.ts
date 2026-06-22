@@ -41,3 +41,32 @@ export async function apiFetch(
 
     return res;
 }
+
+/**
+ * For multipart/form-data uploads (e.g. file + fields).
+ * Do NOT set Content-Type manually — the browser sets it with the correct boundary.
+ * Auth token is injected automatically.
+ */
+export async function apiFormFetch(
+    path: string,
+    formData: FormData,
+    options?: Omit<RequestInit, "body" | "headers">
+): Promise<Response> {
+    const token = getSessionToken();
+    const res = await fetch(`${API_BASE}${path}`, {
+        method: "POST",
+        ...options,
+        headers: {
+            // No Content-Type here — browser adds multipart/form-data + boundary
+            ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: formData,
+    });
+
+    if (res.status === 401) {
+        clearSession();
+        window.location.href = "/admin/login";
+    }
+
+    return res;
+}

@@ -140,9 +140,11 @@ export default function OrganizersPage() {
             }
 
             const json = await res.json();
+            console.log(json , "orgggggg");
+            
 
             if (json.success) {
-                setOrganizers(json.data.data.map(mapApiItem));
+                setOrganizers(json.data.data);
                 setPagination({
                     page: json.data.page,
                     limit: json.data.limit,
@@ -166,9 +168,9 @@ export default function OrganizersPage() {
 
     const filteredOrganizers = organizers.filter(
         (org) =>
-            org.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            org.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            org.email.toLowerCase().includes(searchQuery.toLowerCase())
+            org.name?.toLowerCase()?.includes(searchQuery.toLowerCase()) ||
+            org.id?.toLowerCase()?.includes(searchQuery.toLowerCase()) ||
+            org.email?.toLowerCase()?.includes(searchQuery.toLowerCase())
     );
 
     const handleViewProfile = (organizer: Organizer) => {
