@@ -84,10 +84,10 @@ function locationLabel(org: Organizer): string {
 
 function mapApiItem(item: any): Organizer {
     return {
-        id: item.id,
-        name: item.name,
-        email: item.email,
-        phone: item.phone,
+        id: item.id ?? "",
+        name: item.name ?? "—",
+        email: item.email ?? "—",
+        phone: item.phone ?? "—",
         state: item.state ?? null,
         district: item.district ?? null,
         isVerified: item.isVerified ?? false,

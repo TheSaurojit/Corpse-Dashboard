@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_BASE = process.env.ADMIN_API_URL;
 
-// 15 second timeout — if Railway doesn't respond, fail fast
-const TIMEOUT_MS = 15_000;
 
 async function handler(
     req: NextRequest,
@@ -47,7 +45,6 @@ async function handler(
 
     try {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
         const backendRes = await fetch(targetUrl, {
             method: req.method,
@@ -58,8 +55,6 @@ async function handler(
             duplex: isMultipart ? "half" : undefined,
             signal: controller.signal,
         });
-
-        clearTimeout(timer);
 
         const data = await backendRes.text();
         console.log(`[PROXY] Response: ${backendRes.status}`);
